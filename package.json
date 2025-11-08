@@ -1,38 +1,328 @@
 {
-  "name": "codescope",
-  "displayName": "CodeScope",
-  "description": "Real-time interactive flowcharts for your code",
+  "name": "codevisualizer",
+  "displayName": "CodeVisualizer",
   "version": "0.0.1",
-  "engines": {
-    "vscode": "^1.105.0"
+  "publisher": "Duc Pham Ngoc",
+  "description": "Real-time interactive flowcharts for your code with AI-powered insights",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DucPhamNgoc08/CodeVisualizer.git"
   },
+  "icon": "media/icon.png",
   "categories": [
-    "Other"
+    "Visualization",
+    "Programming Languages",
+    "Other",
+    "AI"
   ],
-  "activationEvents": [],
+  "keywords": [
+    "flowchart",
+    "visualization",
+    "code analysis",
+    "ast",
+    "diagram"
+  ],
   "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "codevisualizer-container",
+          "title": "CodeVisualizer",
+          "icon": "media/icon.png"
+        }
+      ]
+    },
+    "views": {
+      "codevisualizer-container": [
+        {
+          "id": "codevisualizer.flowchartView",
+          "name": "Flowchart",
+          "type": "webview",
+          "icon": "media/icon.png"
+        }
+      ]
+    },
     "commands": [
       {
-        "command": "codescope.helloWorld",
-        "title": "Hello World"
+        "command": "codevisualizer.generateFlowchart",
+        "title": "CodeVisualizer: Generate Flowchart",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "codevisualizer.openFlowchartInPanel",
+        "title": "CodeVisualizer: Open Flowchart in New Window",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "codevisualizer.openFlowchartToSide",
+        "title": "CodeVisualizer: Open Flowchart to the Side",
+        "icon": "$(split-horizontal)"
+      },
+      {
+        "command": "codevisualizer.openFlowchartInNewColumn",
+        "title": "CodeVisualizer: Open Flowchart in New Column",
+        "icon": "$(split-vertical)"
+      },
+      {
+        "command": "codevisualizer.maximizeFlowchartPanel",
+        "title": "CodeVisualizer: Maximize Flowchart Panel",
+        "icon": "$(screen-full)"
+      },
+      {
+        "command": "codevisualizer.refreshFlowchart",
+        "title": "CodeVisualizer: Refresh Flowchart",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "codevisualizer.exportFlowchart",
+        "title": "CodeVisualizer: Export Flowchart",
+        "icon": "$(export)"
+      },
+      {
+        "command": "codevisualizer.llm.enableLabels",
+        "title": "CodeVisualizer: Enable AI Labels",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "codevisualizer.llm.changeModel",
+        "title": "CodeVisualizer: Change AI Model",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "codevisualizer.llm.resetCache",
+        "title": "CodeVisualizer: Reset AI Cache",
+        "icon": "$(trash)"
       }
-    ]
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "codevisualizer.generateFlowchart",
+          "when": "editorTextFocus && editorHasSelection",
+          "group": "navigation@1"
+        },
+        {
+          "command": "codevisualizer.openFlowchartInPanel",
+          "when": "editorTextFocus",
+          "group": "navigation@2"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "codevisualizer.refreshFlowchart",
+          "when": "view == codevisualizer.flowchartView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "codevisualizer.openFlowchartInPanel",
+          "when": "view == codevisualizer.flowchartView",
+          "group": "navigation@2"
+        },
+        {
+          "command": "codevisualizer.exportFlowchart",
+          "when": "view == codevisualizer.flowchartView",
+          "group": "navigation@3"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "codevisualizer.generateFlowchart",
+          "when": "editorTextFocus"
+        },
+        {
+          "command": "codevisualizer.openFlowchartInPanel",
+          "when": "editorTextFocus"
+        },
+        {
+          "command": "codevisualizer.openFlowchartToSide",
+          "when": "editorTextFocus"
+        },
+        {
+          "command": "codevisualizer.openFlowchartInNewColumn",
+          "when": "editorTextFocus"
+        },
+        {
+          "command": "codevisualizer.maximizeFlowchartPanel",
+          "when": "editorTextFocus"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "CodeVisualizer",
+      "properties": {
+        "codevisualizer.theme": {
+          "type": "string",
+          "enum": [
+            "monokai",
+            "catppuccin",
+            "github",
+            "solarized",
+            "one-dark-pro",
+            "dracula",
+            "material-theme",
+            "nord",
+            "tokyo-night"
+          ],
+          "enumDescriptions": [
+            "Monokai - Classic dark theme with vibrant syntax highlighting",
+            "Catppuccin - Popular pastel theme with excellent readability",
+            "GitHub - Clean and modern theme matching GitHub's interface",
+            "Solarized - Precision colors for machines and people",
+            "One Dark Pro - Atom's iconic One Dark theme",
+            "Dracula - A dark theme for vampires and developers",
+            "Material Theme - Google's Material Design colors",
+            "Nord - An arctic, north-bluish color palette",
+            "Tokyo Night - A clean, dark theme inspired by Tokyo's neon nights"
+          ],
+          "default": "monokai",
+          "description": "Choose the color theme for flowchart nodes"
+        },
+        "codevisualizer.autoGenerate": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically generate flowchart when opening a file"
+        },
+        "codevisualizer.autoRefresh": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically refresh flowchart when code changes"
+        },
+        "codevisualizer.complexity.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable cyclomatic complexity analysis and display"
+        },
+        "codevisualizer.complexity.displayInNodes": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show complexity indicators directly on flowchart nodes"
+        },
+        "codevisualizer.complexity.displayInPanel": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show complexity information in the dedicated panel"
+        },
+        "codevisualizer.complexity.thresholds.low": {
+          "type": "number",
+          "default": 5,
+          "minimum": 1,
+          "description": "Upper threshold for low complexity (1 to this value)"
+        },
+        "codevisualizer.complexity.thresholds.medium": {
+          "type": "number",
+          "default": 10,
+          "minimum": 2,
+          "description": "Upper threshold for medium complexity"
+        },
+        "codevisualizer.complexity.thresholds.high": {
+          "type": "number",
+          "default": 20,
+          "minimum": 3,
+          "description": "Upper threshold for high complexity (above this is very high)"
+        },
+        "codevisualizer.panel.defaultPosition": {
+          "type": "string",
+          "enum": [
+            "beside",
+            "two",
+            "three"
+          ],
+          "enumDescriptions": [
+            "Open beside the current editor",
+            "Open in the second column",
+            "Open in the third column"
+          ],
+          "default": "two",
+          "description": "Default position for new flowchart panels"
+        },
+        "codevisualizer.panel.retainWhenHidden": {
+          "type": "boolean",
+          "default": true,
+          "description": "Keep panel content when hidden to improve performance"
+        },
+        "codevisualizer.panel.enableFindWidget": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable find/search functionality in panel view"
+        },
+        "codevisualizer.export.format": {
+          "type": "string",
+          "enum": [
+            "png",
+            "svg",
+            "pdf"
+          ],
+          "default": "png",
+          "description": "Default export format for flowcharts"
+        },
+        "codevisualizer.llm.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable AI-powered human-friendly node labels"
+        },
+        "codevisualizer.llm.provider": {
+          "type": "string",
+          "enum": [
+            "openai",
+            "gemini",
+            "groq",
+            "ollama",
+            "anthropic"
+          ],
+          "default": "openai",
+          "description": "AI provider used for generating node labels"
+        },
+        "codevisualizer.llm.model": {
+          "type": "string",
+          "default": "gpt-4o-mini",
+          "description": "Model identifier for the selected AI provider"
+        },
+        "codevisualizer.llm.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "API key for the AI provider (stored securely)"
+        },
+        "codevisualizer.llm.style": {
+          "type": "string",
+          "enum": [
+            "concise",
+            "explanatory",
+            "technical"
+          ],
+          "default": "concise",
+          "description": "Style preference for AI-generated labels"
+        },
+        "codevisualizer.llm.language": {
+          "type": "string",
+          "default": "en",
+          "description": "Preferred output language for labels (ISO 639-1 code)"
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
-    "compile": "webpack",
+    "clean": "rm -rf dist out",
+    "compile": "npm run clean && webpack",
     "watch": "webpack --watch",
-    "package": "webpack --mode production --devtool hidden-source-map",
+    "package": "npm run clean && webpack --mode production --devtool hidden-source-map",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
-    "lint": "eslint src",
-    "test": "vscode-test"
+    "lint": "eslint src --ext ts",
+    "lint:fix": "eslint src --ext ts --fix",
+    "test": "vscode-test",
+    "publish:patch": "vsce publish patch",
+    "publish:minor": "vsce publish minor",
+    "publish:major": "vsce publish major"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
-    "@types/node": "^24.10.0",
+    "@types/node": "^20.x",
     "@types/vscode": "^1.105.0",
     "@typescript-eslint/eslint-plugin": "^8.46.3",
     "@typescript-eslint/parser": "^8.46.3",
@@ -46,8 +336,7 @@
     "webpack-cli": "^6.0.1"
   },
   "dependencies": {
-    "@vscode/tree-sitter-wasm": "^0.2.0",
-    "tree-sitter": "^0.25.0",
-    "web-tree-sitter": "^0.25.10"
+    "@vscode/tree-sitter-wasm": "^0.1.4",
+    "web-tree-sitter": "^0.22.2"
   }
 }
