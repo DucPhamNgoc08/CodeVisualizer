@@ -43,7 +43,7 @@ const config = {
           from: path.resolve(
             __dirname,
             "src",
-            "logic",
+            "core",
             "language-services",
             "python",
             "tree-sitter-python.wasm"
@@ -54,7 +54,7 @@ const config = {
           from: path.resolve(
             __dirname,
             "src",
-            "logic",
+            "core",
             "language-services",
             "typescript",
             "tree-sitter-typescript.wasm"
@@ -65,7 +65,7 @@ const config = {
           from: path.resolve(
             __dirname,
             "src",
-            "logic",
+            "core",
             "language-services",
             "java",
             "tree-sitter-java.wasm"
@@ -76,7 +76,7 @@ const config = {
           from: path.resolve(
             __dirname,
             "src",
-            "logic",
+            "core",
             "language-services",
             "cpp",
             "tree-sitter-cpp.wasm"
@@ -87,7 +87,7 @@ const config = {
           from: path.resolve(
             __dirname,
             "src",
-            "logic",
+            "core",
             "language-services",
             "c",
             "tree-sitter-c.wasm"
@@ -98,7 +98,7 @@ const config = {
           from: path.resolve(
             __dirname,
             "src",
-            "logic",
+            "core",
             "language-services",
             "rust",
             "tree-sitter-rust.wasm"
@@ -109,7 +109,7 @@ const config = {
           from: path.resolve(
             __dirname,
             "src",
-            "logic",
+            "core",
             "language-services",
             "go",
             "tree-sitter-go.wasm"
