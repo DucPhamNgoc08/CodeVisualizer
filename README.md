@@ -1,41 +1,87 @@
 # CodeVisualizer
 
-**Real-time interactive flowcharts for your code with AI-powered insights**
+**Real-time interactive flowcharts and dependency visualization for your code with AI-powered insights**
 
-CodeVisualizer is a powerful VS Code extension that transforms your source code into beautiful, interactive flowcharts. It supports multiple programming languages and provides AI-powered label generation.
+CodeVisualizer is a powerful VS Code extension that provides two main visualization capabilities: function-level flowcharts for understanding code control flow, and codebase-level dependency graphs for analyzing project structure and module relationships.
 
 ![CodeVisualizer](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![VS Code](https://img.shields.io/badge/VS%20Code-1.22.0+-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-orange.svg)
 
-## Features
+## Main Features
 
-### Code Flowchart Generation
-- **Multi-language Support**: Python, TypeScript/JavaScript, Java, C++, C, Rust, Go
+### 1. Function-Level Flowchart Generation
+
+Transform individual functions into interactive, visual flowcharts to understand control flow, decision points, and execution paths.
+
+**Supported Languages:**
+- Python
+- TypeScript/JavaScript
+- Java
+- C++
+- C
+- Rust
+- Go
+
+**Capabilities:**
+- **Multi-language Support**: Parse and visualize functions across 7 programming languages
 - **Interactive Visualization**: Click nodes to navigate to code, zoom and pan
 - **Multiple Views**: Sidebar view and detachable panel windows
 - **Semantic Analysis**: Understand control flow, loops, exceptions, and async operations
-
-### Customization
-- **9 Beautiful Themes**: Monokai, Catppuccin, GitHub, Solarized, One Dark Pro, Dracula, Material Theme, Nord, Tokyo Night
-- **Complexity Analysis**: Visual indicators for cyclomatic complexity
 - **Export Options**: Export flowcharts as PNG, SVG, or PDF (coming soon)
 
-### AI-Powered Features
-- **Smart Labels**: AI-generated human-friendly node labels
+### 2. Codebase Dependency Visualization
+
+Analyze and visualize the entire codebase structure, showing module dependencies, file relationships, and project architecture.
+
+**Supported Languages:**
+- TypeScript/JavaScript (`.js`, `.jsx`, `.ts`, `.tsx`, `.mjs`, `.cjs`)
+- Python (`.py`)
+
+**Capabilities:**
+- **Dependency Graph**: Visualize import/require relationships between modules
+- **Color-Coded Categories**: Automatic classification of files into categories:
+  - Core: Logic, extract, schema, enrich modules
+  - Report: Report, transform, graph operations
+  - Config: Validate, config, CLI, utilities
+  - Tool: Tools, cache, special interfaces
+  - Entry: Entry points, common utilities
+- **VSCode Theme Integration**: Node backgrounds adapt to your VSCode theme (dark/light)
+- **High-Contrast Visualization**: Color-coded edges and strokes for easy identification
+- **Interactive Navigation**: Zoom, pan, and explore large dependency graphs
+- **Folder Hierarchy**: Subgraphs organized by directory structure
+
+**Usage:**
+- Right-click on a folder in the Explorer → "Visualize Codebase Flow"
+- Or use Command Palette: "CodeVisualizer: Visualize Codebase Flow"
+
+### Customization
+
+- **9 Beautiful Themes**: Monokai, Catppuccin, GitHub, Solarized, One Dark Pro, Dracula, Material Theme, Nord, Tokyo Night
+- **Auto-refresh**: Automatically update flowcharts on code changes
+- **Performance Optimized**: Efficient parsing with Tree-sitter (WASM)
+
+### AI-Powered Features (Function Flowcharts Only)
+
+**Note:** AI features are only available for function-level flowcharts, not for codebase dependency visualization.
+
+- **Smart Labels**: AI-generated human-friendly node labels for function flowcharts
 - **Multiple Providers**: OpenAI, Gemini, Groq, Ollama (local), Anthropic
 - **Intelligent Caching**: Efficient caching to minimize API calls
 - **Customizable Style**: Concise, explanatory, or technical label styles
 - **Multi-language Support**: Generate labels in your preferred language
 
+When enabled, AI labels replace technical node labels (like variable names, condition expressions) with more readable descriptions, making flowcharts easier to understand at a glance.
+
 ### Developer Experience
+
 - **Auto-refresh**: Automatically update flowcharts on code changes
 - **Performance Optimized**: Efficient parsing with Tree-sitter (WASM)
 - **Keyboard Shortcuts**: Quick access to all features
 
 ## How It Works
 
-### Code Analysis Pipeline
+### Function-Level Flowchart Pipeline
 
 1. **Parsing**: Uses Tree-sitter parsers (compiled to WASM) to parse source code into Abstract Syntax Trees (AST)
 2. **Analysis**: Traverses the AST to identify:
@@ -48,9 +94,21 @@ CodeVisualizer is a powerful VS Code extension that transforms your source code 
 4. **Visualization**: Generates Mermaid diagram code from IR
 5. **Rendering**: Renders interactive flowchart using Mermaid.js in webview
 
-### AI Label Generation
+### Codebase Dependency Analysis Pipeline
 
-1. **Extraction**: Extracts node labels from generated Mermaid code
+1. **File Discovery**: Scans workspace for supported files (TypeScript/JavaScript, Python)
+2. **Dependency Extraction**: Parses import/require statements to identify module dependencies
+3. **Path Resolution**: Resolves relative and absolute import paths to actual file locations
+4. **Graph Building**: Constructs dependency graph with nodes (files) and edges (dependencies)
+5. **Classification**: Categorizes files based on path patterns and naming conventions
+6. **Visualization**: Generates Mermaid flowchart with color-coded nodes and edges
+7. **Rendering**: Displays interactive dependency graph with zoom/pan capabilities
+
+### AI Label Generation (Function Flowcharts Only)
+
+**Note:** This feature is only available for function-level flowcharts. Codebase dependency visualization uses file names and paths directly without AI enhancement.
+
+1. **Extraction**: Extracts node labels from generated Mermaid code for function flowcharts
 2. **Caching**: Checks cache for previously generated labels
 3. **Translation**: Sends uncached labels to selected LLM provider
 4. **Replacement**: Replaces technical labels with human-friendly descriptions
@@ -76,11 +134,11 @@ CodeVisualizer is a powerful VS Code extension that transforms your source code 
 ### What Data is Collected?
 
 **None.** CodeVisualizer does not collect, store, or transmit:
-- ❌ Your source code
-- ❌ File contents
-- ❌ Personal information
-- ❌ Usage statistics
-- ❌ Telemetry data
+- Your source code
+- File contents
+- Personal information
+- Usage statistics
+- Telemetry data
 
 **Exception:** Only when AI labels are explicitly enabled, minimal label text is sent to your chosen LLM provider (OpenAI, Gemini, etc.) for translation. This is completely optional and can be disabled at any time.
 
@@ -113,7 +171,7 @@ Then press F5 in VS Code to run the extension in a new window.
 
 ## Usage
 
-### Generating Flowcharts
+### Generating Function Flowcharts
 
 1. **Open a file** in your editor
 2. **Select code** (optional - if not selected, analyzes entire file)
@@ -127,46 +185,20 @@ Then press F5 in VS Code to run the extension in a new window.
 - **Panel View**: Right-click → "Open Flowchart in New Window"
 - **Multiple Views**: Open flowcharts in different editor columns
 
-### AI Labels (Optional)
+### Visualizing Codebase Dependencies
 
-1. Command Palette → "CodeVisualizer: Enable AI Labels"
-2. Select your preferred LLM provider
-3. Enter API key (or use Ollama for local processing)
-4. Choose model and style preferences
-5. Flowcharts will automatically use AI-generated labels
-
-## Configuration
-
-### Theme Selection
-
-```json
-{
-  "codevisualizer.theme": "monokai"  // Options: monokai, catppuccin, github, solarized, one-dark-pro, dracula, material-theme, nord, tokyo-night
-}
-```
-
-### Auto-refresh
-
-```json
-{
-  "codevisualizer.autoRefresh": true,  // Automatically update on code changes
-  "codevisualizer.autoGenerate": false  // Auto-generate on file open
-}
-```
-
-### AI Settings
-
-```json
-{
-  "codevisualizer.llm.enabled": false,
-  "codevisualizer.llm.provider": "openai",
-  "codevisualizer.llm.model": "gpt-4o-mini",
-  "codevisualizer.llm.style": "concise",
-  "codevisualizer.llm.language": "en"
-}
-```
+1. **Right-click on a folder** in the Explorer panel
+2. Select **"Visualize Codebase Flow"**
+   - Or use Command Palette: "CodeVisualizer: Visualize Codebase Flow"
+3. The dependency graph will open in a new panel showing:
+   - All files in the selected folder and subfolders
+   - Import/require relationships between modules
+   - Color-coded file categories
+   - Interactive zoom and pan controls
 
 ## Supported Languages
+
+### Function-Level Flowcharts
 
 | Language | Status | Features |
 |----------|--------|----------|
@@ -178,11 +210,20 @@ Then press F5 in VS Code to run the extension in a new window.
 | Rust | Full Support | Functions, match, loops, error handling |
 | Go | Full Support | Functions, goroutines, error handling |
 
+### Codebase Dependency Visualization
+
+| Language | Status | File Extensions |
+|----------|--------|----------------|
+| TypeScript/JavaScript | Full Support | `.js`, `.jsx`, `.ts`, `.tsx`, `.mjs`, `.cjs` |
+| Python | Full Support | `.py` |
+
+**Note:** Codebase dependency analysis currently supports TypeScript/JavaScript and Python. Support for additional languages (Java, C++, C, Rust, Go) is planned for future releases.
 
 ## Known Issues
 
 - Export functionality is currently in development
 - Large files (>10,000 lines) may take longer to parse
+- Codebase visualization is limited to TypeScript/JavaScript and Python projects
 
 ## Contributing
 
@@ -198,11 +239,6 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Acknowledgments
-
-- **Tree-sitter**: For powerful AST parsing
-- **Mermaid.js**: For beautiful diagram rendering
-
 ## Support
 
 - **Issues**: [GitHub Issues](https://github.com/DucPhamNgoc08/CodeVisualizer/issues)
@@ -210,4 +246,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-**Made with ❤️ by Duc Pham Ngoc**
+**Made with dedication by Duc Pham Ngoc**
