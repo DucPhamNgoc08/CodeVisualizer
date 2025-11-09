@@ -8,7 +8,6 @@ import { setExtensionContext } from "./core/llm/LLMContext";
 import { EnvironmentDetector } from "./core/utils/EnvironmentDetector";
 
 export async function activate(context: vscode.ExtensionContext) {
-  console.log("CodeVisualizer extension is now active!");
   setExtensionContext(context);
 
   // Detect environment and log compatibility mode

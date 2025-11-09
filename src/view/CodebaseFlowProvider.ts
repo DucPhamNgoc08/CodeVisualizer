@@ -268,11 +268,11 @@ export class CodebaseFlowProvider {
     </head>
     <body>
         <div id="controls">
-            <div><strong>📦 Codebase Flow Visualization</strong></div>
+            <div><strong>Codebase Flow Visualization</strong></div>
             <div>
-                <button id="refresh-btn" title="Refresh analysis">🔄 Refresh</button>
-                <button id="export-svg" title="Export as SVG">📥 SVG</button>
-                <button id="export-png" title="Export as PNG">📥 PNG</button>
+                <button id="refresh-btn" title="Refresh analysis">Refresh</button>
+                <button id="export-svg" title="Export as SVG">SVG</button>
+                <button id="export-png" title="Export as PNG">PNG</button>
             </div>
         </div>
         <div id="container">
