@@ -184,22 +184,13 @@ Then press F5 in VS Code to run the extension in a new window.
 ### Generating Function Flowcharts
 
 1. **Open a file** in your editor
-2. **Select code** (optional - if not selected, analyzes entire file)
-3. **Right-click** → "CodeVisualizer: Generate Flowchart"
+2. **Right-click** → "CodeVisualizer: Open flowchart in new window"
    - Or use Command Palette (Ctrl+Shift+P / Cmd+Shift+P)
-   - Or click the flowchart icon in the sidebar
-
-### Viewing Flowcharts
-
-- **Sidebar View**: Automatically appears in the CodeVisualizer sidebar
-- **Panel View**: Right-click → "Open Flowchart in New Window"
-- **Multiple Views**: Open flowcharts in different editor columns
 
 ### Visualizing Codebase Dependencies
 
-1. **Right-click on a folder** in the Explorer panel
+1. **Right-click on a folder** in the Explorer panel or use Command Palette: "CodeVisualizer: Visualize Codebase Flow"
 2. Select **"Visualize Codebase Flow"**
-   - Or use Command Palette: "CodeVisualizer: Visualize Codebase Flow"
 3. The dependency graph will open in a new panel showing:
    - All files in the selected folder and subfolders
    - Import/require relationships between modules
