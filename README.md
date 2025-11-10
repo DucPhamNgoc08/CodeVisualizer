@@ -1,6 +1,6 @@
 # CodeVisualizer
 
-**Real-time interactive flowcharts and dependency visualization for your code with AI-powered insights**
+**Real-time interactive flowcharts and dependency visualization for your code **
 
 CodeVisualizer is a powerful VS Code extension that provides two main visualization capabilities: function-level flowcharts for understanding code control flow, and codebase-level dependency graphs for analyzing project structure and module relationships.
 
