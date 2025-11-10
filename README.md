@@ -4,8 +4,8 @@
 
 CodeVisualizer is a powerful VS Code extension that provides two main visualization capabilities: function-level flowcharts for understanding code control flow, and codebase-level dependency graphs for analyzing project structure and module relationships.
 
-![CodeVisualizer](https://img.shields.io/badge/version-1.0.0-blue.svg)
-![VS Code](https://img.shields.io/badge/VS%20Code-1.22.0+-green.svg)
+![CodeVisualizer](https://img.shields.io/badge/version-1.0.1-blue.svg)
+![VS Code](https://img.shields.io/badge/VS%20Code-1.105.0+-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-orange.svg)
 
 
