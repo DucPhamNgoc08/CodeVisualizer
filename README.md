@@ -63,7 +63,7 @@ Analyze and visualize the entire codebase structure, showing module dependencies
 
 **Usage:**
 - Right-click on a folder in the Explorer → "Visualize Codebase Flow"
-- Or use Command Palette: "CodeVisualizer: Visualize Codebase Flow"
+- Or use Command Palette: "Visualize Codebase Flow"
 
 ### Customization
 
