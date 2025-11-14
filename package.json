@@ -326,6 +326,7 @@
   },
   "dependencies": {
     "@vscode/tree-sitter-wasm": "^0.1.4",
+    "rimraf": "^6.1.0",
     "web-tree-sitter": "^0.22.2"
   }
 }
