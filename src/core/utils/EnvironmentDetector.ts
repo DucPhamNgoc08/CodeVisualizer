@@ -32,7 +32,7 @@ export class EnvironmentDetector {
 
     let editor: EditorType = "unknown";
     const sources = [appName, appHost, userAgent, cwd, portable];
-    for (const cfg of editorConfigs) {6
+    for (const cfg of editorConfigs) {
       if (sources.some((src) => cfg.keywords.some((k) => src.includes(k)))) {
         editor = cfg.id;
         break;
