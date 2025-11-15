@@ -1,7 +1,8 @@
+import { FlowchartEdge, FlowchartNode } from "../../ir/ir";
+
 export class StringProcessor {
   private static escapeCache = new Map<string, string>();
   private static readonly MAX_CACHE_SIZE = 1000;
-
   private static readonly escapeRegex = /"|\\|\n|<|>|`/g;
   private static readonly colonRegex = /:$/;
   private static readonly escapeMap: Record<string, string> = {
@@ -57,4 +58,16 @@ export class StringProcessor {
   static clearCache(): void {
     this.escapeCache.clear();
   }
+}
+export interface ProcessResult {
+  nodes: FlowchartNode[];
+  edges: FlowchartEdge[];
+  entryNodeId?: string;
+  exitPoints: { id: string; label?: string }[];
+  nodesConnectedToExit: Set<string>;
+}
+
+export interface LoopContext {
+  breakTargetId: string;
+  continueTargetId: string;
 }
