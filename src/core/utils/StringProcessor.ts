@@ -1,16 +1,13 @@
-import { FlowchartEdge, FlowchartNode } from "../../ir/ir";
-
 export class StringProcessor {
   private static escapeCache = new Map<string, string>();
   private static readonly MAX_CACHE_SIZE = 1000;
 
-  // Precompiled regex for better performance
   private static readonly escapeRegex = /"|\\|\n|<|>|`/g;
   private static readonly colonRegex = /:$/;
   private static readonly escapeMap: Record<string, string> = {
     '"': "#quot;",
     "\\": "\\\\",
-    "\n": " ",
+    "\n": " ",     
     "<": "#60;",
     ">": "#62;",
     "`": "#96;",
@@ -22,24 +19,29 @@ export class StringProcessor {
     // Check cache first
     const cached = this.escapeCache.get(str);
     if (cached !== undefined) {
-      // Move to end for LRU behavior
       this.escapeCache.delete(str);
       this.escapeCache.set(str, cached);
       return cached;
     }
 
-    // Use LRU eviction instead of clearing entire cache
+    // LRU eviction
     if (this.escapeCache.size >= this.MAX_CACHE_SIZE) {
       const firstKey = this.escapeCache.keys().next().value;
       if (firstKey !== undefined) {
         this.escapeCache.delete(firstKey);
       }
     }
+    let processed = str;
+    
+    processed = processed.replace(/[\r\n\t]+/g, ' ');
+    processed = processed.replace(/\s+/g, ' ');
+    processed = processed.trim();
 
-    let escaped = str.replace(
+    let escaped = processed.replace(
       this.escapeRegex,
       (match) => this.escapeMap[match]
     );
+    
     escaped = escaped.replace(this.colonRegex, "").trim();
 
     // Length limiting for readability
@@ -55,17 +57,4 @@ export class StringProcessor {
   static clearCache(): void {
     this.escapeCache.clear();
   }
-}
-
-export interface ProcessResult {
-  nodes: FlowchartNode[];
-  edges: FlowchartEdge[];
-  entryNodeId?: string;
-  exitPoints: { id: string; label?: string }[];
-  nodesConnectedToExit: Set<string>;
-}
-
-export interface LoopContext {
-  breakTargetId: string;
-  continueTargetId: string;
 }
