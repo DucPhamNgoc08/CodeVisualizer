@@ -119,6 +119,17 @@ const config = {
         {
           from: path.resolve(
             __dirname,
+            "src",
+            "core",
+            "language-services",
+            "php",
+            "tree-sitter-php.wasm"
+          ),
+          to: ".",
+        },
+        {
+          from: path.resolve(
+            __dirname,
             "node_modules",
             "web-tree-sitter",
             "tree-sitter.wasm"

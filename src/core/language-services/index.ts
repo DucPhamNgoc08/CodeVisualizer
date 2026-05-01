@@ -7,6 +7,7 @@ import { initCLanguageService } from "./c";
 import { initRustLanguageService } from "./rust";
 import { EnvironmentDetector } from "../utils/EnvironmentDetector";
 import { initGoLanguageService } from "./go";
+import { initPhpLanguageService } from "./php";
 
 /**
  * Initializes all language services for the extension.
@@ -91,6 +92,17 @@ export async function initLanguageServices(context: vscode.ExtensionContext) {
           "tree-sitter-go.wasm"
         ).fsPath;
         await initGoLanguageService(goWasmPath);
+      },
+    },
+    {
+      name: "PHP",
+      init: async () => {
+        const phpWasmPath = vscode.Uri.joinPath(
+          context.extensionUri,
+          "dist",
+          "tree-sitter-php.wasm"
+        ).fsPath;
+        await initPhpLanguageService(phpWasmPath);
       },
     },
   ];

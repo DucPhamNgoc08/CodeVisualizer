@@ -27,7 +27,8 @@
     "llm",
     "ai",
     "code visualizer",
-    "graph"
+    "graph",
+    "php"
   ],
   "main": "./dist/extension.js",
   "activationEvents": [
@@ -39,7 +40,7 @@
         {
           "id": "codevisualizer-container",
           "title": "CodeVisualizer",
-          "icon": "media/icon.png"
+          "icon": "media/icon.svg"
         }
       ]
     },
@@ -49,7 +50,7 @@
           "id": "codevisualizer.flowchartView",
           "name": "Flowchart",
           "type": "webview",
-          "icon": "media/icon.png"
+          "icon": "media/icon.svg"
         }
       ]
     },
