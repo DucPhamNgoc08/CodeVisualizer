@@ -100,8 +100,8 @@ export class FlowchartPanelProvider extends BaseFlowchartProvider {
 
     // Set a distinctive icon to make it stand out
     this._panel.iconPath = {
-      light: vscode.Uri.joinPath(this._extensionUri, "media", "icon.png"),
-      dark: vscode.Uri.joinPath(this._extensionUri, "media", "icon.png"),
+      light: vscode.Uri.joinPath(this._extensionUri, "media", "icon.svg"),
+      dark: vscode.Uri.joinPath(this._extensionUri, "media", "icon.svg"),
     };
 
     this._panel.onDidDispose(

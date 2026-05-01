@@ -29,7 +29,7 @@ export class CodebaseAnalyzer {
   private supportedExtensions: Set<string> = new Set([
     ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs",
     ".py", ".java", ".cpp", ".c", ".h", ".hpp",
-    ".rs", ".go"
+    ".rs", ".go", ".php"
   ]);
 
   constructor(workspaceRoot: string) {
@@ -206,6 +206,19 @@ export class CodebaseAnalyzer {
           valid: resolved !== null,
         });
       }
+    } else if (languageId === "php") {
+      const includeRegex = /\b(?:require|require_once|include|include_once)\s*(?:\(?\s*)[^;]*?['"]([^'"]+)['"]/g;
+      let match;
+      while ((match = includeRegex.exec(content)) !== null) {
+        const modulePath = match[1];
+        const resolved = this.resolveModulePath(modulePath, filePath);
+        dependencies.push({
+          module: modulePath,
+          resolved,
+          dependencyTypes: ["include"],
+          valid: resolved !== null,
+        });
+      }
     }
 
     return dependencies;
@@ -229,7 +242,7 @@ export class CodebaseAnalyzer {
       }
 
       // Try different extensions
-      const extensions = ["", ".js", ".ts", ".jsx", ".tsx", ".mjs", ".cjs"];
+      const extensions = ["", ".js", ".ts", ".jsx", ".tsx", ".mjs", ".cjs", ".php"];
       for (const ext of extensions) {
         const withExt = resolved + ext;
         if (fs.existsSync(withExt) && fs.statSync(withExt).isFile()) {
@@ -238,7 +251,7 @@ export class CodebaseAnalyzer {
       }
 
       // Try as directory with index file
-      const indexExtensions = ["index.js", "index.ts", "index.jsx", "index.tsx"];
+      const indexExtensions = ["index.js", "index.ts", "index.jsx", "index.tsx", "index.php"];
       for (const indexExt of indexExtensions) {
         const indexPath = path.join(resolved, indexExt);
         if (fs.existsSync(indexPath)) {
@@ -316,6 +329,12 @@ export class CodebaseAnalyzer {
       while ((match = funcRegex.exec(content)) !== null) {
         functions.push(match[1]);
       }
+    } else if (languageId === "php") {
+      const funcRegex = /function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(/g;
+      let match;
+      while ((match = funcRegex.exec(content)) !== null) {
+        functions.push(match[1]);
+      }
     }
 
     return functions;
@@ -338,6 +357,12 @@ export class CodebaseAnalyzer {
       if (match) {
         const items = match[1].split(",").map(s => s.trim().replace(/['"]/g, ""));
         exports.push(...items);
+      }
+    } else if (languageId === "php") {
+      const publicSymbolRegex = /(?:class|interface|trait|enum|function)\s+([A-Za-z_][A-Za-z0-9_]*)/g;
+      let match;
+      while ((match = publicSymbolRegex.exec(content)) !== null) {
+        exports.push(match[1]);
       }
     }
 
@@ -376,6 +401,7 @@ export class CodebaseAnalyzer {
       ".hpp": "cpp",
       ".rs": "rust",
       ".go": "go",
+      ".php": "php",
     };
     return langMap[ext] || "unknown";
   }

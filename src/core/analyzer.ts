@@ -7,6 +7,7 @@ import { analyzeCppCode } from "./language-services/cpp";
 import { analyzeCCode } from "./language-services/c";
 import { analyzeRustCode } from "./language-services/rust";
 import { analyzeGoCode } from "./language-services/go";
+import { analyzePhpCode } from "./language-services/php";
 
 /**
  * Analyzes the given source code and generates a flowchart.
@@ -38,6 +39,8 @@ export async function analyzeCode(
       return analyzeRustCode(sourceCode, functionName, position);
     case "go":
       return analyzeGoCode(sourceCode, functionName, position);
+    case "php":
+      return await analyzePhpCode(sourceCode, position || 0);
     default:
       throw new Error(`Unsupported language: ${languageId}`);
   }

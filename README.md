@@ -68,7 +68,7 @@ CodeVisualizer is a powerful VS Code extension that transforms the way you under
 * Understand complex codebases instantly with interactive dependency graphs showing how your modules connect
 * Debug and comprehend function logic through beautiful flowcharts that reveal control flow, loops, and decision points
 * Save hours of manual diagramming - generate production-ready visualizations in seconds
-* Support for 7+ programming languages with intelligent semantic analysis
+* Support for 8+ programming languages with intelligent semantic analysis
 * Privacy-first design - all code analysis happens locally on your machine
 
 CodeVisualizer bridges the gap between code and comprehension, making it easier for developers to onboard, debug, and maintain software projects of any size.
@@ -91,8 +91,8 @@ This extension leverages cutting-edge technologies to deliver fast, accurate cod
 ### Key Features
 
 > **Note on Language Support:**  
-> - **Function-Level Flowcharts**: Supports Python, TypeScript/JavaScript, Java, C++, C, Rust, and Go  
-> - **Codebase Dependency Visualization**: Currently supports TypeScript/JavaScript and Python (more languages coming soon)  
+> - **Function-Level Flowcharts**: Supports Python, TypeScript/JavaScript, Java, C++, C, Rust, Go, and PHP  
+> - **Codebase Dependency Visualization**: Currently supports TypeScript/JavaScript, Python, and PHP (more languages coming soon)  
 > - **AI-Powered Features**: Available only for Function-Level Flowcharts
 
 #### Function-Level Flowchart Generation
@@ -100,7 +100,7 @@ This extension leverages cutting-edge technologies to deliver fast, accurate cod
 Transform individual functions into interactive, visual flowcharts to understand control flow, decision points, and execution paths.
 
 **Capabilities:**
-- **Multi-language Support**: Parse and visualize functions across Python, TypeScript/JavaScript, Java, C++, C, Rust, and Go
+- **Multi-language Support**: Parse and visualize functions across Python, TypeScript/JavaScript, Java, C++, C, Rust, Go, and PHP
 - **Interactive Visualization**: Click nodes to navigate to code, zoom and pan for detailed exploration
 - **Multiple Views**: Sidebar view for quick reference and detachable panel windows for deep analysis
 - **Semantic Analysis**: Intelligent understanding of control flow, loops, exceptions, and async operations
@@ -214,6 +214,7 @@ Get CodeVisualizer up and running in your VS Code environment in just a few clic
 | C | Full Support | 
 | Rust | Full Support | 
 | Go | Full Support | 
+| PHP | Full Support |
 
 ### Codebase Dependency Visualization
 
@@ -221,6 +222,7 @@ Get CodeVisualizer up and running in your VS Code environment in just a few clic
 |----------|--------|----------------|
 | TypeScript/JavaScript | Full Support | `.js`, `.ts`, `.mjs`, `.cjs` | 
 | Python | Full Support | `.py` | 
+| PHP | Basic Support | `.php` |
 
 **Planned Support:** Java, C++, C, Rust, Go dependency analysis coming in future releases.
 

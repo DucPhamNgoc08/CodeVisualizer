@@ -22,7 +22,8 @@ export abstract class AbstractParser {
     | "cpp"
     | "c"
     | "rust"
-    | "go";
+    | "go"
+    | "php";
 
   // The parser instance is now required by the constructor
   protected parser: Parser;
@@ -41,6 +42,7 @@ export abstract class AbstractParser {
       | "c"
       | "rust"
       | "go"
+      | "php"
   ) {
     this.parser = parser;
     this.language = language;
