@@ -1,7 +1,7 @@
 {
   "name": "codevisualizer",
   "displayName": "CodeVisualizer",
-  "version": "1.0.6",
+  "version": "1.0.9",
   "publisher": "ducphamngoc",
   "description": "Real-time interactive flowcharts for your code",
   "repository": {
@@ -31,6 +31,23 @@
     "php"
   ],
   "main": "./dist/extension.js",
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "clean": "rimraf dist out",
+    "compile": "npm run clean && webpack",
+    "watch": "webpack --watch",
+    "package": "npm run clean && webpack --mode production --devtool hidden-source-map",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "lint:fix": "eslint src --ext ts --fix",
+    "test": "vscode-test",
+    "publish:patch": "vsce publish patch",
+    "publish:minor": "vsce publish minor",
+    "publish:major": "vsce publish major",
+    "install:local": "node ./scripts/install-local.js"
+  },
   "activationEvents": [
     "onStartupFinished"
   ],
@@ -109,6 +126,11 @@
         "command": "codevisualizer.visualizeCodebase",
         "title": "Visualize Codebase Flow",
         "icon": "$(organization)"
+      },
+      {
+        "command": "codevisualizer.visualizeFunctionUsage",
+        "title": "CodeVisualizer: Visualize Function Usage",
+        "icon": "$(references)"
       }
     ],
     "menus": {
@@ -122,6 +144,11 @@
           "command": "codevisualizer.openFlowchartInPanel",
           "when": "editorTextFocus",
           "group": "navigation@2"
+        },
+        {
+          "command": "codevisualizer.visualizeFunctionUsage",
+          "when": "editorTextFocus && editorLangId =~ /^(typescript|typescriptreact|javascript|javascriptreact)$/",
+          "group": "navigation@3"
         }
       ],
       "view/title": [
@@ -164,6 +191,10 @@
         },
         {
           "command": "codevisualizer.visualizeCodebase"
+        },
+        {
+          "command": "codevisualizer.visualizeFunctionUsage",
+          "when": "editorLangId =~ /^(typescript|typescriptreact|javascript|javascriptreact)$/"
         }
       ],
       "explorer/context": [
@@ -293,22 +324,6 @@
         }
       }
     }
-  },
-  "scripts": {
-    "vscode:prepublish": "npm run package",
-    "clean": "rimraf dist out",
-    "compile": "npm run clean && webpack",
-    "watch": "webpack --watch",
-    "package": "npm run clean && webpack --mode production --devtool hidden-source-map",
-    "compile-tests": "tsc -p . --outDir out",
-    "watch-tests": "tsc -p . -w --outDir out",
-    "pretest": "npm run compile-tests && npm run compile && npm run lint",
-    "lint": "eslint src --ext ts",
-    "lint:fix": "eslint src --ext ts --fix",
-    "test": "vscode-test",
-    "publish:patch": "vsce publish patch",
-    "publish:minor": "vsce publish minor",
-    "publish:major": "vsce publish major"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",

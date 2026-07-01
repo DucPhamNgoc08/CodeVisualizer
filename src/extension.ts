@@ -2,6 +2,8 @@ import * as vscode from "vscode";
 import { FlowchartViewProvider } from "./view/FlowchartViewProvider";
 import { FlowchartPanelProvider } from "./view/FlowchartPanelProvider";
 import { CodebaseFlowProvider } from "./view/CodebaseFlowProvider";
+import { FunctionUsageProvider } from "./view/FunctionUsageProvider";
+import { getTypeScriptParser } from "./core/language-services/typescript";
 import { initLanguageServices } from "./core/language-services";
 import { LLMManager } from "./core/llm/LLMManager";
 import { setExtensionContext } from "./core/llm/LLMContext";
@@ -232,6 +234,49 @@ export async function activate(context: vscode.ExtensionContext) {
       } catch (error) {
         console.error("Error in visualizeCodebase:", error);
         vscode.window.showErrorMessage(`Failed to visualize codebase: ${error}`);
+      }
+    }),
+
+    // Function Usage: reverse call graph for the function under the cursor (TS/JS)
+    vscode.commands.registerCommand("codevisualizer.visualizeFunctionUsage", async () => {
+      console.log("Command codevisualizer.visualizeFunctionUsage executed");
+      try {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+          vscode.window.showWarningMessage("Open a file and place the cursor inside a function.");
+          return;
+        }
+
+        const supportedLanguages = [
+          "typescript",
+          "typescriptreact",
+          "javascript",
+          "javascriptreact",
+        ];
+        if (!supportedLanguages.includes(editor.document.languageId)) {
+          vscode.window.showInformationMessage(
+            "Function usage graphs are currently only supported for TypeScript/JavaScript."
+          );
+          return;
+        }
+
+        const parser = await getTypeScriptParser();
+        const sourceCode = editor.document.getText();
+        const position = editor.document.offsetAt(editor.selection.active);
+        const functionName = parser.findFunctionAtPosition(sourceCode, position);
+
+        if (!functionName || functionName.startsWith("[anonymous")) {
+          vscode.window.showWarningMessage(
+            "Place the cursor inside a named function to visualize its usage."
+          );
+          return;
+        }
+
+        const usageProvider = new FunctionUsageProvider(context.extensionUri);
+        await usageProvider.show(functionName, editor.document.uri.fsPath, position);
+      } catch (error) {
+        console.error("Error in visualizeFunctionUsage:", error);
+        vscode.window.showErrorMessage(`Failed to visualize function usage: ${error}`);
       }
     }),
 
