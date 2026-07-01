@@ -270,8 +270,12 @@ export class CallGraphAnalyzer {
   }
 
   private sanitizeId(name: string): string {
-    const cleaned = name.replace(/[^A-Za-z0-9_]/g, "_");
-    return /^[A-Za-z_]/.test(cleaned) ? cleaned : `fn_${cleaned}`;
+    const cleaned =
+      name
+        .replace(/[^A-Za-z0-9_]/g, "_")
+        .replace(/_+/g, "_")
+        .replace(/^_+|_+$/g, "") || "anonymous";
+    return `fn_${cleaned}`;
   }
 
   private async getAllSupportedFiles(): Promise<string[]> {

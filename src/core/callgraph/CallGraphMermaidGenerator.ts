@@ -59,16 +59,18 @@ export class CallGraphMermaidGenerator {
 
   private renderLabel(node: UsageGraphNode): string {
     const second = node.relativePath
-      ? `${this.escape(node.relativePath)}:${node.line}`
+      ? `${this.escape(node.relativePath.replace(/\\/g, "/"))}:${node.line}`
       : "definition not found";
-    return `${this.escape(node.name)}<br/><small>${second}</small>`;
+    return `${this.escape(node.name)} - ${second}`;
   }
 
   private escape(text: string): string {
     return text
+      .replace(/\\/g, "\\\\")
       .replace(/"/g, "#quot;")
       .replace(/</g, "#60;")
       .replace(/>/g, "#62;")
-      .replace(/\n/g, " ");
+      .replace(/`/g, "#96;")
+      .replace(/\r?\n/g, " ");
   }
 }

@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { analyzeCode } from "../core/analyzer";
-import { LocationMapEntry } from "../ir/ir";
+import { LocationMapEntry, NodeType } from "../ir/ir";
 import { EnhancedMermaidGenerator } from "../core/EnhancedMermaidGenerator";
 import { LLMManager } from "../core/llm/LLMManager";
 import { getExtensionContext } from "../core/llm/LLMContext";
@@ -62,6 +62,11 @@ export type UserInteractionEndMessage = {
   payload: {};
 };
 
+export type DrillIntoFunctionMessage = {
+  command: "drillIntoFunction";
+  payload: { start: number; end: number };
+};
+
 export type WebviewMessage =
   | HighlightCodeMessage
   | ExportMessage
@@ -72,7 +77,16 @@ export type WebviewMessage =
   | DisableLLMLabelsMessage
   | SetupLLMMessage
   | UserInteractionStartMessage
-  | UserInteractionEndMessage;
+  | UserInteractionEndMessage
+  | DrillIntoFunctionMessage;
+
+/** Node types that represent a call to another function/method worth drilling into. */
+const DRILLABLE_NODE_TYPES = new Set<NodeType>([
+  NodeType.FUNCTION_CALL,
+  NodeType.METHOD_CALL,
+  NodeType.MACRO_CALL,
+  NodeType.SUBROUTINE,
+]);
 
 export interface FlowchartViewContext {
   isPanel: boolean;
@@ -213,12 +227,25 @@ export abstract class BaseFlowchartProvider {
     switch (message.command) {
       case "highlightCode": {
         const { start, end } = message.payload;
-        const editor = vscode.window.activeTextEditor;
-        if (editor) {
-          const startPos = editor.document.positionAt(start);
-          const endPos = editor.document.positionAt(end);
+        // Use the document this flowchart was generated from (rather than
+        // whatever editor happens to be active) so that clicking a box in a
+        // popup flowchart always navigates to the right file.
+        const document = this._currentDocument;
+        if (document) {
+          const startPos = document.positionAt(start);
+          const endPos = document.positionAt(end);
           const range = new vscode.Range(startPos, endPos);
 
+          // Reuse the already-active editor if it's already showing this
+          // document (the common case) so we don't disturb its view column;
+          // otherwise (e.g. clicking a box inside a popup) open it fresh.
+          const activeEditor = vscode.window.activeTextEditor;
+          const editor =
+            activeEditor && activeEditor.document === document
+              ? activeEditor
+              : await vscode.window.showTextDocument(document, {
+                  viewColumn: vscode.ViewColumn.One,
+                });
           editor.selection = new vscode.Selection(range.start, range.end);
           editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
         }
@@ -285,6 +312,60 @@ export abstract class BaseFlowchartProvider {
         this._userInteracting = false;
         break;
       }
+
+      case "drillIntoFunction": {
+        await this.drillIntoFunction(message.payload);
+        break;
+      }
+    }
+  }
+
+  /**
+   * Resolves the definition of the call at the given offset (using the
+   * workspace's language providers) and opens a standalone popup showing
+   * that callee's own code flow, without disturbing this flowchart.
+   */
+  private async drillIntoFunction(payload: {
+    start: number;
+    end: number;
+  }): Promise<void> {
+    const document = this._currentDocument;
+    if (!document) {
+      return;
+    }
+    try {
+      const position = document.positionAt(payload.start);
+      const results = await vscode.commands.executeCommand<
+        (vscode.Location | vscode.LocationLink)[] | undefined
+      >("vscode.executeDefinitionProvider", document.uri, position);
+
+      if (!results || results.length === 0) {
+        vscode.window.showInformationMessage(
+          "Could not resolve a definition for this call."
+        );
+        return;
+      }
+
+      const first = results[0];
+      const targetUri = "targetUri" in first ? first.targetUri : first.uri;
+      const targetRange =
+        "targetSelectionRange" in first && first.targetSelectionRange
+          ? first.targetSelectionRange
+          : "targetRange" in first
+          ? first.targetRange
+          : first.range;
+
+      // Lazily required to avoid a circular import: FunctionFlowPopupProvider
+      // extends BaseFlowchartProvider.
+      const { FunctionFlowPopupProvider } = require("./FunctionFlowPopupProvider") as
+        typeof import("./FunctionFlowPopupProvider");
+      const popup = new FunctionFlowPopupProvider(this._extensionUri);
+      await popup.showFor(targetUri, targetRange);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      vscode.window.showErrorMessage(
+        `Could not open function definition: ${message}`
+      );
     }
   }
 
@@ -301,6 +382,13 @@ export abstract class BaseFlowchartProvider {
       index += 1;
     }
     return line.startsWith("click ", index);
+  }
+
+  private static sanitizeMermaidNodeId(nodeId: string): string {
+    return nodeId
+      .replace(/\s+/g, "_")
+      .replace(/[^\w]/g, "")
+      .replace(/_+/g, "_");
   }
 
   private extractClickHandlers(src: string): string[] {
@@ -429,7 +517,7 @@ export abstract class BaseFlowchartProvider {
     const webview = this.getWebview();
     if (webview) {
       // Sanitize nodeId before sending to webview to match sanitized IDs in the diagram
-      const sanitizedNodeId = nodeId ? nodeId.replace(/\s+/g, '_').replace(/[^\w-]/g, '_').replace(/_+/g, '_') : null;
+      const sanitizedNodeId = nodeId ? BaseFlowchartProvider.sanitizeMermaidNodeId(nodeId) : null;
       webview.postMessage({
         command: "highlightNode",
         payload: { nodeId: sanitizedNodeId },
@@ -484,8 +572,29 @@ export abstract class BaseFlowchartProvider {
       return;
     }
 
-    const position = editor.document.offsetAt(editor.selection.active);
-    const document = editor.document;
+    await this.updateViewForDocument(editor.document, editor.selection.active);
+  }
+
+  protected async updateViewForDocument(
+    document: vscode.TextDocument,
+    activePosition: vscode.Position
+  ): Promise<void> {
+    const webview = this.getWebview();
+    if (!webview) {
+      return;
+    }
+
+    // Prevent updates when user is interacting with the webview
+    if (this._userInteracting) {
+      return;
+    }
+
+    // Prevent multiple simultaneous updates
+    if (this._isUpdating) {
+      return;
+    }
+
+    const position = document.offsetAt(activePosition);
 
     // Check if we need to update - avoid unnecessary regeneration
     const shouldUpdate = this._shouldUpdate(document, position);
@@ -493,7 +602,7 @@ export abstract class BaseFlowchartProvider {
       // Just update highlighting if we're still in the same function
       if (
         this._currentFunctionRange &&
-        this._currentFunctionRange.contains(editor.selection.active)
+        this._currentFunctionRange.contains(activePosition)
       ) {
         const entry = this._locationMap.find(
           (e) => position >= e.start && position <= e.end
@@ -550,12 +659,31 @@ export abstract class BaseFlowchartProvider {
       // Calculate code metrics
       const codeMetrics = MetricsAnalyzer.analyze(flowchartIR, document.getText());
 
+      // Node ids are sanitized in-place by the generator above, so this map's
+      // keys line up with the ids that end up in the rendered SVG.
+      const callNodeLocations: Record<string, { start: number; end: number }> = {};
+      const nodeLocations: Record<string, { start: number; end: number }> = {};
+      for (const entry of flowchartIR.locationMap) {
+        nodeLocations[BaseFlowchartProvider.sanitizeMermaidNodeId(entry.nodeId)] = {
+          start: entry.start,
+          end: entry.end,
+        };
+      }
+      for (const node of flowchartIR.nodes) {
+        if (node.nodeType && DRILLABLE_NODE_TYPES.has(node.nodeType) && node.location) {
+          callNodeLocations[node.id] = {
+            start: node.location.start,
+            end: node.location.end,
+          };
+        }
+      }
+
       const ctx = getExtensionContext();
       const availability = ctx ? await LLMManager.getAvailability(ctx) : { enabled: false, provider: "openai", model: "" };
-      this.setWebviewHtml(this.getWebviewContent(mermaidCode, this.getNonce(), availability, codeMetrics));
+      this.setWebviewHtml(this.getWebviewContent(mermaidCode, this.getNonce(), availability, codeMetrics, callNodeLocations, nodeLocations));
 
       // After updating the view, immediately highlight the node for the current cursor
-      const offset = editor.document.offsetAt(editor.selection.active);
+      const offset = document.offsetAt(activePosition);
       const entry = this._locationMap.find(
         (e) => offset >= e.start && offset <= e.end
       );
@@ -614,7 +742,9 @@ export abstract class BaseFlowchartProvider {
     flowchartSyntax: string,
     nonce: string,
     llmAvailability?: { enabled: boolean; provider: string; model: string },
-    codeMetrics?: CodeMetrics
+    codeMetrics?: CodeMetrics,
+    callNodeLocations?: Record<string, { start: number; end: number }>,
+    nodeLocations?: Record<string, { start: number; end: number }>
   ): string {
     const theme =
       vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Dark
@@ -723,6 +853,25 @@ export abstract class BaseFlowchartProvider {
             
             #mermaid-source { display: none; }
 
+            /* Drill-in icon shown on function/method-call nodes */
+            .drill-icon { cursor: pointer; }
+            .drill-icon .drill-icon-bg {
+                fill: var(--vscode-button-background);
+                stroke: var(--vscode-button-border, var(--vscode-panel-border));
+                stroke-width: 1px;
+                opacity: 0.85;
+            }
+            .drill-icon:hover .drill-icon-bg {
+                fill: var(--vscode-button-hoverBackground);
+                opacity: 1;
+            }
+            .drill-icon .drill-icon-glyph {
+                font-size: 13px;
+                fill: var(--vscode-button-foreground);
+                pointer-events: none;
+                user-select: none;
+            }
+
             /* Other styles for controls */
             ${ this.getStylesForControls(context) }
         </style>
@@ -737,13 +886,32 @@ export abstract class BaseFlowchartProvider {
         <script nonce="${nonce}">
             const vscode = acquireVsCodeApi();
             const INITIAL_LLM = ${JSON.stringify(llm)};
+            const CALL_NODES = ${JSON.stringify(callNodeLocations || {})};
+            const NODE_LOCATIONS = ${JSON.stringify(nodeLocations || {})};
             let isLLMEnabled = false;
+            let webviewInteractionTimeout = null;
+            let suppressNodeClickUntil = 0;
+
+            function notifyWebviewInteractionStart() {
+                vscode.postMessage({ command: 'userInteractionStart', payload: {} });
+                if (webviewInteractionTimeout) {
+                    clearTimeout(webviewInteractionTimeout);
+                }
+            }
+
+            function notifyWebviewInteractionEnd() {
+                if (webviewInteractionTimeout) {
+                    clearTimeout(webviewInteractionTimeout);
+                }
+                webviewInteractionTimeout = setTimeout(() => {
+                    vscode.postMessage({ command: 'userInteractionEnd', payload: {} });
+                }, 300);
+            }
 
             function onNodeClick(start, end) {
-                vscode.postMessage({
-                    command: 'highlightCode',
-                    payload: { start, end }
-                });
+                // Mermaid still evaluates generated click directives, but the
+                // extension handles node clicks below so drill-icon clicks can
+                // be separated from box-body clicks reliably.
             }
 
             let highlightedNodeId = null;
@@ -896,24 +1064,6 @@ export abstract class BaseFlowchartProvider {
             function setupInteractions(svgElement) {
                 if (!svgElement) return;
 
-                // Track user interaction state for pan/zoom
-                let interactionTimeout = null;
-                function notifyInteractionStart() {
-                    vscode.postMessage({ command: 'userInteractionStart', payload: {} });
-                    if (interactionTimeout) {
-                        clearTimeout(interactionTimeout);
-                    }
-                }
-                function notifyInteractionEnd() {
-                    if (interactionTimeout) {
-                        clearTimeout(interactionTimeout);
-                    }
-                    // Delay end notification to avoid flickering during rapid interactions
-                    interactionTimeout = setTimeout(() => {
-                        vscode.postMessage({ command: 'userInteractionEnd', payload: {} });
-                    }, 300);
-                }
-
                 const panZoomInstance = svgPanZoom(svgElement, {
                     zoomEnabled: true,
                     controlIconsEnabled: true,
@@ -923,12 +1073,12 @@ export abstract class BaseFlowchartProvider {
                     maxZoom: 10,
                     zoomScaleSensitivity: 0.2,
                     onZoom: function() {
-                        notifyInteractionStart();
-                        notifyInteractionEnd();
+                        notifyWebviewInteractionStart();
+                        notifyWebviewInteractionEnd();
                     },
                     onPan: function() {
-                        notifyInteractionStart();
-                        notifyInteractionEnd();
+                        notifyWebviewInteractionStart();
+                        notifyWebviewInteractionEnd();
                     }
                 });
 
@@ -939,7 +1089,7 @@ export abstract class BaseFlowchartProvider {
                     // Only track if not clicking on a node (nodes have their own click handlers)
                     if (!e.target.closest('.node')) {
                         isMouseDown = true;
-                        notifyInteractionStart();
+                        notifyWebviewInteractionStart();
                     }
                 });
                 svgElement.addEventListener('mousemove', (e) => {
@@ -950,7 +1100,7 @@ export abstract class BaseFlowchartProvider {
                 svgElement.addEventListener('mouseup', () => {
                     if (isMouseDown) {
                         isMouseDown = false;
-                        notifyInteractionEnd();
+                        notifyWebviewInteractionEnd();
                         isDragging = false;
                     }
                 });
@@ -958,7 +1108,7 @@ export abstract class BaseFlowchartProvider {
                     if (isMouseDown) {
                         isMouseDown = false;
                         isDragging = false;
-                        notifyInteractionEnd();
+                        notifyWebviewInteractionEnd();
                     }
                 });
 
@@ -1048,13 +1198,35 @@ export abstract class BaseFlowchartProvider {
                 allNodes.forEach((node) => {
                     const fullNodeId = node.id;
                     if (!fullNodeId) return;
+                    const baseId = extractBaseId(fullNodeId);
+                    const loc = NODE_LOCATIONS[baseId];
+
+                    if (loc && node.getAttribute('data-codevisualizer-click-ready') !== 'true') {
+                        node.setAttribute('data-codevisualizer-click-ready', 'true');
+                        node.addEventListener('click', (event) => {
+                            const target = event.target;
+                            if (target && typeof target.closest === 'function' && target.closest('.drill-icon')) {
+                                return;
+                            }
+                            if (Date.now() < suppressNodeClickUntil) {
+                                return;
+                            }
+
+                            event.preventDefault();
+                            event.stopPropagation();
+                            notifyWebviewInteractionStart();
+                            vscode.postMessage({
+                                command: 'highlightCode',
+                                payload: { start: loc.start, end: loc.end }
+                            });
+                            notifyWebviewInteractionEnd();
+                        });
+                    }
 
                     node.addEventListener('mouseenter', (event) => {
                         event.stopPropagation();
                         node.classList.add('hover-highlight');
 
-                        const baseId = extractBaseId(fullNodeId);
-                        
                         const outgoingEdges = findOutgoingEdges(fullNodeId, edgeMetadata);
                         outgoingEdges.forEach(edge => {
                             edge.classList.add('hover-highlight');
@@ -1071,6 +1243,85 @@ export abstract class BaseFlowchartProvider {
                             el.classList.remove('hover-highlight', 'child-highlight');
                         });
                     });
+                });
+
+                addDrillInIcons(svgElement, extractBaseId);
+            }
+
+            /**
+             * Adds a small clickable "drill in" icon to every node that represents a
+             * function/method call, so the user can jump straight to that callee's
+             * own flowchart instead of just highlighting the call site.
+             */
+            function addDrillInIcons(svgElement, extractBaseId) {
+                if (!CALL_NODES || Object.keys(CALL_NODES).length === 0) return;
+                const svgNS = 'http://www.w3.org/2000/svg';
+
+                svgElement.querySelectorAll('.node').forEach((node) => {
+                    if (node.querySelector('.drill-icon')) return; // avoid duplicates on re-render
+                    const baseId = extractBaseId(node.id);
+                    const loc = CALL_NODES[baseId];
+                    if (!loc) return;
+
+                    let bbox;
+                    try {
+                        bbox = node.getBBox();
+                    } catch {
+                        return;
+                    }
+
+                    const size = 22;
+                    const iconGroup = document.createElementNS(svgNS, 'g');
+                    iconGroup.setAttribute('class', 'drill-icon');
+                    iconGroup.setAttribute(
+                        'transform',
+                        'translate(' + (bbox.x + bbox.width - size - 4) + ',' + (bbox.y + 4) + ')'
+                    );
+
+                    const title = document.createElementNS(svgNS, 'title');
+                    title.textContent = 'View code flow inside this function';
+                    iconGroup.appendChild(title);
+
+                    const circle = document.createElementNS(svgNS, 'circle');
+                    circle.setAttribute('class', 'drill-icon-bg');
+                    circle.setAttribute('cx', String(size / 2));
+                    circle.setAttribute('cy', String(size / 2));
+                    circle.setAttribute('r', String(size / 2));
+                    iconGroup.appendChild(circle);
+
+                    const glyph = document.createElementNS(svgNS, 'text');
+                    glyph.setAttribute('class', 'drill-icon-glyph');
+                    glyph.setAttribute('x', String(size / 2));
+                    glyph.setAttribute('y', String(size / 2 + 5));
+                    glyph.setAttribute('text-anchor', 'middle');
+                    glyph.textContent = '\u{1F50E}';
+                    iconGroup.appendChild(glyph);
+
+                    function suppressParentNodeClick(event) {
+                        suppressNodeClickUntil = Date.now() + 750;
+                        event.preventDefault();
+                        event.stopPropagation();
+                        if (typeof event.stopImmediatePropagation === 'function') {
+                            event.stopImmediatePropagation();
+                        }
+                    }
+
+                    ['pointerdown', 'mousedown', 'mouseup', 'dblclick'].forEach((eventName) => {
+                        iconGroup.addEventListener(eventName, suppressParentNodeClick, true);
+                    });
+
+                    iconGroup.addEventListener('click', (event) => {
+                        suppressParentNodeClick(event);
+                        notifyWebviewInteractionStart();
+                        event.stopPropagation();
+                        vscode.postMessage({
+                            command: 'drillIntoFunction',
+                            payload: { start: loc.start, end: loc.end }
+                        });
+                        notifyWebviewInteractionEnd();
+                    });
+
+                    node.appendChild(iconGroup);
                 });
             }
 

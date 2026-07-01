@@ -1,7 +1,7 @@
 {
   "name": "codevisualizer",
   "displayName": "CodeVisualizer",
-  "version": "1.0.9",
+  "version": "1.1.0",
   "publisher": "ducphamngoc",
   "description": "Real-time interactive flowcharts for your code",
   "repository": {
@@ -74,81 +74,111 @@
     "commands": [
       {
         "command": "codevisualizer.generateFlowchart",
-        "title": "CodeVisualizer: Generate Flowchart",
+        "title": "Generate Flowchart",
+        "category": "CodeVisualizer",
         "icon": "$(graph)"
       },
       {
         "command": "codevisualizer.openFlowchartInPanel",
-        "title": "CodeVisualizer: Open Flowchart in New Window",
+        "title": "Open Flowchart in New Window",
+        "category": "CodeVisualizer",
         "icon": "$(open-preview)"
       },
       {
         "command": "codevisualizer.openFlowchartToSide",
-        "title": "CodeVisualizer: Open Flowchart to the Side",
+        "title": "Open Flowchart to the Side",
+        "category": "CodeVisualizer",
         "icon": "$(split-horizontal)"
       },
       {
         "command": "codevisualizer.openFlowchartInNewColumn",
-        "title": "CodeVisualizer: Open Flowchart in New Column",
+        "title": "Open Flowchart in New Column",
+        "category": "CodeVisualizer",
         "icon": "$(split-vertical)"
       },
       {
         "command": "codevisualizer.maximizeFlowchartPanel",
-        "title": "CodeVisualizer: Maximize Flowchart Panel",
+        "title": "Maximize Flowchart Panel",
+        "category": "CodeVisualizer",
         "icon": "$(screen-full)"
       },
       {
         "command": "codevisualizer.refreshFlowchart",
-        "title": "CodeVisualizer: Refresh Flowchart",
+        "title": "Refresh Flowchart",
+        "category": "CodeVisualizer",
         "icon": "$(refresh)"
       },
       {
         "command": "codevisualizer.exportFlowchart",
-        "title": "CodeVisualizer: Export Flowchart",
+        "title": "Export Flowchart",
+        "category": "CodeVisualizer",
         "icon": "$(export)"
       },
       {
         "command": "codevisualizer.llm.enableLabels",
-        "title": "CodeVisualizer: Enable AI Labels",
+        "title": "Enable AI Labels",
+        "category": "CodeVisualizer",
         "icon": "$(sparkle)"
       },
       {
         "command": "codevisualizer.llm.changeModel",
-        "title": "CodeVisualizer: Change AI Model",
+        "title": "Change AI Model",
+        "category": "CodeVisualizer",
         "icon": "$(settings-gear)"
       },
       {
         "command": "codevisualizer.llm.resetCache",
-        "title": "CodeVisualizer: Reset AI Cache",
+        "title": "Reset AI Cache",
+        "category": "CodeVisualizer",
         "icon": "$(trash)"
       },
       {
         "command": "codevisualizer.visualizeCodebase",
         "title": "Visualize Codebase Flow",
+        "category": "CodeVisualizer",
         "icon": "$(organization)"
       },
       {
         "command": "codevisualizer.visualizeFunctionUsage",
-        "title": "CodeVisualizer: Visualize Function Usage",
+        "title": "Visualize Function Usage",
+        "category": "CodeVisualizer",
         "icon": "$(references)"
+      }
+    ],
+    "submenus": [
+      {
+        "id": "codevisualizer.editorContextMenu",
+        "label": "Code Visualizer",
+        "icon": "media/icon.svg"
+      },
+      {
+        "id": "codevisualizer.explorerContextMenu",
+        "label": "Code Visualizer",
+        "icon": "media/icon.svg"
       }
     ],
     "menus": {
       "editor/context": [
         {
-          "command": "codevisualizer.generateFlowchart",
-          "when": "editorTextFocus && editorHasSelection",
+          "submenu": "codevisualizer.editorContextMenu",
+          "when": "editorTextFocus",
           "group": "navigation@1"
+        }
+      ],
+      "codevisualizer.editorContextMenu": [
+        {
+          "command": "codevisualizer.generateFlowchart",
+          "when": "editorHasSelection",
+          "group": "1_flowchart@1"
         },
         {
           "command": "codevisualizer.openFlowchartInPanel",
-          "when": "editorTextFocus",
-          "group": "navigation@2"
+          "group": "1_flowchart@2"
         },
         {
           "command": "codevisualizer.visualizeFunctionUsage",
-          "when": "editorTextFocus && editorLangId =~ /^(typescript|typescriptreact|javascript|javascriptreact)$/",
-          "group": "navigation@3"
+          "when": "editorLangId =~ /^(typescript|typescriptreact|javascript|javascriptreact)$/",
+          "group": "1_flowchart@3"
         }
       ],
       "view/title": [
@@ -199,9 +229,16 @@
       ],
       "explorer/context": [
         {
-          "command": "codevisualizer.visualizeCodebase",
+          "submenu": "codevisualizer.explorerContextMenu",
           "when": "explorerResourceIsFolder",
           "group": "navigation@1"
+        }
+      ],
+      "codevisualizer.explorerContextMenu": [
+        {
+          "command": "codevisualizer.visualizeCodebase",
+          "when": "explorerResourceIsFolder",
+          "group": "1_flowchart@1"
         }
       ]
     },

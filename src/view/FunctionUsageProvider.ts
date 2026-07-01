@@ -5,6 +5,7 @@ import {
   CallGraphNodeLocation,
 } from "../core/callgraph/CallGraphMermaidGenerator";
 import { EnvironmentDetector } from "../core/utils/EnvironmentDetector";
+import { FunctionFlowPopupProvider } from "./FunctionFlowPopupProvider";
 
 const MERMAID_VERSION = "11.8.0";
 const SVG_PAN_ZOOM_VERSION = "3.6.1";
@@ -19,6 +20,7 @@ export class FunctionUsageProvider {
   private _extensionUri: vscode.Uri;
   private _disposables: vscode.Disposable[] = [];
   private _locations: Record<string, CallGraphNodeLocation> = {};
+  private _codeFlowPopup: FunctionFlowPopupProvider | undefined;
 
   constructor(extensionUri: vscode.Uri) {
     this._extensionUri = extensionUri;
@@ -55,11 +57,23 @@ export class FunctionUsageProvider {
         async (message) => {
           if (message.command === "openFunction") {
             await this.openFunction(message.payload);
+          } else if (message.command === "viewCodeFlow") {
+            await this.viewCodeFlow(message.payload);
           }
         },
         null,
         this._disposables
       );
+
+      // Pop the usage graph out into its own OS window so it can be kept
+      // visible (e.g. on a second monitor) while you keep coding.
+      setTimeout(() => {
+        vscode.commands
+          .executeCommand("workbench.action.moveEditorToNewWindow")
+          .then(undefined, (error) => {
+            console.warn("Could not move function usage panel to new window:", error);
+          });
+      }, 100);
     } else {
       this._panel.title = `Usage: ${targetName}`;
       this._panel.reveal(viewColumn);
@@ -145,6 +159,47 @@ export class FunctionUsageProvider {
     }
   }
 
+  /**
+   * Opens a standalone popup showing this caller's own code flow, so the
+   * user can see what's inside it instead of just jumping to its source.
+   */
+  private async viewCodeFlow(payload: CallGraphNodeLocation): Promise<void> {
+    if (!payload || !payload.file) {
+      return;
+    }
+    try {
+      const uri = vscode.Uri.file(payload.file);
+      const doc = await vscode.workspace.openTextDocument(uri);
+      const start = doc.positionAt(payload.start);
+      const end = doc.positionAt(payload.end);
+
+      const popup = this.getCodeFlowPopup();
+      const viewColumn = popup.viewColumn ?? this.revealPanelForChildPopup();
+      await popup.showFor(uri, new vscode.Range(start, end), viewColumn);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : String(error);
+      vscode.window.showErrorMessage(`Could not open code flow: ${message}`);
+    }
+  }
+
+  private getCodeFlowPopup(): FunctionFlowPopupProvider {
+    if (!this._codeFlowPopup || !this._codeFlowPopup.hasPanel) {
+      this._codeFlowPopup = new FunctionFlowPopupProvider(this._extensionUri);
+    }
+    return this._codeFlowPopup;
+  }
+
+  private revealPanelForChildPopup(): vscode.ViewColumn {
+    if (!this._panel) {
+      return vscode.ViewColumn.Active;
+    }
+
+    const viewColumn = this._panel.viewColumn ?? vscode.ViewColumn.Active;
+    this._panel.reveal(viewColumn, false);
+    return this._panel.viewColumn ?? viewColumn;
+  }
+
   private getWebviewContent(
     mermaidCode: string,
     webview: vscode.Webview,
@@ -200,12 +255,31 @@ export class FunctionUsageProvider {
                 filter: drop-shadow(0 0 6px var(--vscode-textLink-foreground));
             }
             #mermaid-source { display: none; }
+
+            /* Drill-in icon shown on each caller node */
+            .drill-icon { cursor: pointer; }
+            .drill-icon .drill-icon-bg {
+                fill: var(--vscode-button-background);
+                stroke: var(--vscode-button-border, var(--vscode-panel-border));
+                stroke-width: 1px;
+                opacity: 0.85;
+            }
+            .drill-icon:hover .drill-icon-bg {
+                fill: var(--vscode-button-hoverBackground);
+                opacity: 1;
+            }
+            .drill-icon .drill-icon-glyph {
+                font-size: 13px;
+                fill: var(--vscode-button-foreground);
+                pointer-events: none;
+                user-select: none;
+            }
         </style>
     </head>
     <body>
         <div id="header">
             <strong>Usage of ${this.escapeHtml(targetName)}</strong> — ${this.escapeHtml(summary)}${truncatedNote}
-            <span style="opacity:0.7"> · Click a node to jump to its definition.</span>
+            <span style="opacity:0.7"> · Click a node to jump to its definition, or the 🔎 icon to view its code flow.</span>
         </div>
         <div id="container">
             <div class="mermaid">${mermaidCode.replace(/<\/script>/gi, "<\\/script>")}</div>
@@ -246,8 +320,59 @@ export class FunctionUsageProvider {
                         node.addEventListener('click', () => {
                             vscode.postMessage({ command: 'openFunction', payload: loc });
                         });
+                        addDrillInIcon(node, loc);
                     }
                 });
+            }
+
+            /**
+             * Adds a small clickable icon to a caller node so the user can view that
+             * function's own code flow diagram instead of just jumping to its source.
+             */
+            function addDrillInIcon(node, loc) {
+                if (node.querySelector('.drill-icon')) return;
+                const svgNS = 'http://www.w3.org/2000/svg';
+
+                let bbox;
+                try {
+                    bbox = node.getBBox();
+                } catch {
+                    return;
+                }
+
+                const size = 22;
+                const iconGroup = document.createElementNS(svgNS, 'g');
+                iconGroup.setAttribute('class', 'drill-icon');
+                iconGroup.setAttribute(
+                    'transform',
+                    'translate(' + (bbox.x + bbox.width - size - 4) + ',' + (bbox.y + 4) + ')'
+                );
+
+                const title = document.createElementNS(svgNS, 'title');
+                title.textContent = 'View code flow inside this function';
+                iconGroup.appendChild(title);
+
+                const circle = document.createElementNS(svgNS, 'circle');
+                circle.setAttribute('class', 'drill-icon-bg');
+                circle.setAttribute('cx', String(size / 2));
+                circle.setAttribute('cy', String(size / 2));
+                circle.setAttribute('r', String(size / 2));
+                iconGroup.appendChild(circle);
+
+                const glyph = document.createElementNS(svgNS, 'text');
+                glyph.setAttribute('class', 'drill-icon-glyph');
+                glyph.setAttribute('x', String(size / 2));
+                glyph.setAttribute('y', String(size / 2 + 5));
+                glyph.setAttribute('text-anchor', 'middle');
+                glyph.textContent = '\u{1F50E}';
+                iconGroup.appendChild(glyph);
+
+                iconGroup.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    vscode.postMessage({ command: 'viewCodeFlow', payload: loc });
+                });
+
+                node.appendChild(iconGroup);
             }
 
             window.addEventListener('load', () => {
@@ -304,6 +429,10 @@ export class FunctionUsageProvider {
   public dispose(): void {
     if (this._panel) {
       this._panel.dispose();
+    }
+    if (this._codeFlowPopup) {
+      this._codeFlowPopup.dispose();
+      this._codeFlowPopup = undefined;
     }
     while (this._disposables.length) {
       this._disposables.pop()?.dispose();
