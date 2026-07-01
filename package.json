@@ -1,7 +1,7 @@
 {
   "name": "codevisualizer",
   "displayName": "CodeVisualizer",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "publisher": "ducphamngoc",
   "description": "Real-time interactive flowcharts for your code",
   "repository": {
@@ -162,7 +162,7 @@
         {
           "submenu": "codevisualizer.editorContextMenu",
           "when": "editorTextFocus",
-          "group": "navigation@1"
+          "group": "navigation@99"
         }
       ],
       "codevisualizer.editorContextMenu": [
