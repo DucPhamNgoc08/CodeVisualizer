@@ -306,9 +306,22 @@ export class FunctionUsageProvider {
 
             function setupInteractions(svgElement) {
                 if (!svgElement) return;
-                svgPanZoom(svgElement, {
+                const panZoomInstance = svgPanZoom(svgElement, {
                     zoomEnabled: true, controlIconsEnabled: true, fit: true, center: true,
                     minZoom: 0.1, maxZoom: 50, zoomScaleSensitivity: 0.2
+                });
+
+                // Re-fit the diagram whenever the panel/window is resized (e.g. moved to
+                // another monitor and maximized) — svg-pan-zoom caches viewport size at
+                // init time and won't otherwise notice the container changed.
+                let resizeTimeout;
+                window.addEventListener('resize', () => {
+                    clearTimeout(resizeTimeout);
+                    resizeTimeout = setTimeout(() => {
+                        panZoomInstance.resize();
+                        panZoomInstance.fit();
+                        panZoomInstance.center();
+                    }, 100);
                 });
 
                 svgElement.querySelectorAll('.node').forEach((node) => {
