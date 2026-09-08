@@ -25,4 +25,15 @@ export async function analyzeTypeScriptCode(
   return parser.generateFlowchart(code, undefined, position);
 }
 
+/**
+ * Returns the initialized shared TypeScript parser instance. Used by features
+ * that need lower-level parsing (e.g. cross-file call graphs).
+ */
+export async function getTypeScriptParser(): Promise<TsAstParser> {
+  if (!parserPromise) {
+    throw new Error("TypeScript language service not initialized.");
+  }
+  return parserPromise;
+}
+
 export { TsAstParser };

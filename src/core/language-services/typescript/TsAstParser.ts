@@ -9,6 +9,21 @@ import {
 import { ProcessResult, LoopContext } from "../../common/AstParserTypes";
 import { ensureParserInit } from "../common/ParserInit";
 
+/**
+ * Raw information about a single function/method definition together with the
+ * names of the functions it calls. Used to build cross-file call graphs.
+ */
+export interface TsFunctionInfo {
+  name: string;
+  kind: "function" | "method" | "arrow";
+  startIndex: number;
+  endIndex: number;
+  /** 0-based line number where the definition starts. */
+  startLine: number;
+  /** Distinct names of functions/methods called within this definition's body. */
+  calls: string[];
+}
+
 export class TsAstParser extends AbstractParser {
   private currentFunctionIsArrow = false;
 
@@ -94,6 +109,141 @@ export class TsAstParser extends AbstractParser {
         );
       });
     return arrowFunc?.childForFieldName("name")?.text || "[anonymous arrow]";
+  }
+
+  /** Function-expression node types (may be anonymous or bound to a name). */
+  private static readonly FUNCTION_EXPRESSION_TYPES = new Set([
+    "arrow_function",
+    "function",
+    "function_expression",
+    "generator_function",
+  ]);
+
+  /** Node types that are always their own named definition. */
+  private static readonly NAMED_DEFINITION_TYPES = new Set([
+    "function_declaration",
+    "generator_function_declaration",
+    "method_definition",
+  ]);
+
+  /**
+   * Extracts every named function/method/arrow-function definition in the
+   * source along with the names of the functions it calls. Calls made inside a
+   * nested *named* function are attributed to that function; calls inside
+   * anonymous callbacks are attributed to the enclosing function. This is the
+   * building block for cross-file call/usage graphs.
+   */
+  public extractFunctionsWithCalls(sourceCode: string): TsFunctionInfo[] {
+    const tree = this.parser.parse(sourceCode);
+    const results: TsFunctionInfo[] = [];
+
+    const pushDef = (
+      defNode: Parser.SyntaxNode,
+      nameNode: Parser.SyntaxNode | null,
+      bodyNode: Parser.SyntaxNode | null,
+      kind: TsFunctionInfo["kind"]
+    ) => {
+      const name = nameNode?.text;
+      if (!name) return;
+      results.push({
+        name,
+        kind,
+        startIndex: defNode.startIndex,
+        endIndex: defNode.endIndex,
+        startLine: defNode.startPosition.row,
+        calls: this.collectCalleeNames(bodyNode),
+      });
+    };
+
+    for (const f of tree.rootNode.descendantsOfType("function_declaration")) {
+      pushDef(f, f.childForFieldName("name"), f.childForFieldName("body"), "function");
+    }
+
+    for (const m of tree.rootNode.descendantsOfType("method_definition")) {
+      pushDef(m, m.childForFieldName("name"), m.childForFieldName("body"), "method");
+    }
+
+    // Arrow/function expressions bound to a variable (const fn = () => {}).
+    for (const v of tree.rootNode.descendantsOfType("variable_declarator")) {
+      const value = v.childForFieldName("value");
+      if (value && TsAstParser.FUNCTION_EXPRESSION_TYPES.has(value.type)) {
+        pushDef(v, v.childForFieldName("name"), value.childForFieldName("body"), "arrow");
+      }
+    }
+
+    // Class field arrow functions (onClick = () => {}), common in React etc.
+    for (const p of tree.rootNode.descendantsOfType("public_field_definition")) {
+      const value = p.childForFieldName("value");
+      if (value && TsAstParser.FUNCTION_EXPRESSION_TYPES.has(value.type)) {
+        pushDef(p, p.childForFieldName("name"), value.childForFieldName("body"), "method");
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Collects the distinct names of functions/methods invoked within a body.
+   * Calls inside anonymous callbacks (e.g. `arr.map(x => foo(x))`) are
+   * attributed to the enclosing function, but calls inside nested *named*
+   * definitions are not (they are recorded against that definition instead).
+   */
+  private collectCalleeNames(body: Parser.SyntaxNode | null): string[] {
+    const names = new Set<string>();
+    if (!body) return [];
+
+    const visit = (node: Parser.SyntaxNode) => {
+      for (const child of node.namedChildren) {
+        // Skip nested named definitions; their calls belong to them.
+        if (this.isNamedDefinition(child)) {
+          continue;
+        }
+        if (child.type === "call_expression") {
+          const callee = this.calleeName(child.childForFieldName("function"));
+          if (callee) names.add(callee);
+        }
+        visit(child);
+      }
+    };
+
+    visit(body);
+    return [...names];
+  }
+
+  /**
+   * True when a node is a function that has its own definition entry: a
+   * declaration/method, or a function expression bound to a name (variable or
+   * class field). Anonymous function expressions return false so their calls
+   * are attributed to the enclosing function.
+   */
+  private isNamedDefinition(node: Parser.SyntaxNode): boolean {
+    if (TsAstParser.NAMED_DEFINITION_TYPES.has(node.type)) {
+      return true;
+    }
+    if (TsAstParser.FUNCTION_EXPRESSION_TYPES.has(node.type)) {
+      const parentType = node.parent?.type;
+      return (
+        parentType === "variable_declarator" ||
+        parentType === "public_field_definition"
+      );
+    }
+    return false;
+  }
+
+  /**
+   * Resolves the simple name being called from a call expression's "function"
+   * node (e.g. `foo()` -> "foo", `obj.bar()` / `this.bar()` -> "bar").
+   */
+  private calleeName(fn: Parser.SyntaxNode | null): string | undefined {
+    if (!fn) return undefined;
+    if (fn.type === "identifier") return fn.text;
+    if (fn.type === "member_expression") {
+      return fn.childForFieldName("property")?.text || undefined;
+    }
+    if (fn.type === "parenthesized_expression" && fn.namedChild(0)) {
+      return this.calleeName(fn.namedChild(0));
+    }
+    return undefined;
   }
 
   public generateFlowchart(

@@ -93,6 +93,7 @@ This extension leverages cutting-edge technologies to deliver fast, accurate cod
 > **Note on Language Support:**  
 > - **Function-Level Flowcharts**: Supports Python, TypeScript/JavaScript, Java, C++, C, Rust, Go, and PHP  
 > - **Codebase Dependency Visualization**: Currently supports TypeScript/JavaScript, Python, and PHP (more languages coming soon)  
+> - **Function Usage Graphs**: Currently supports TypeScript/JavaScript only  
 > - **AI-Powered Features**: Available only for Function-Level Flowcharts
 
 #### Function-Level Flowchart Generation
@@ -118,6 +119,16 @@ Analyze and visualize your entire codebase structure, revealing module dependenc
 - **High-Contrast Visualization**: Color-coded edges and strokes for instant comprehension
 - **Interactive Navigation**: Zoom, pan, and explore even the largest dependency graphs smoothly
 - **Folder Hierarchy**: Smart subgraphs organized by your directory structure
+
+#### Function Usage Graphs
+
+Trace where a TypeScript/JavaScript function is called across the workspace with an interactive reverse call graph.
+
+**Capabilities:**
+- **Caller Graphs**: Visualize direct and transitive callers for the function under the cursor
+- **Code Navigation**: Click graph nodes to jump to caller definitions
+- **Drill Into Code Flow**: Use the code-flow icon on a caller node to open that function's flowchart without leaving the usage graph
+- **Multi-Window Workflow**: Keep usage graphs and drilled-in flowcharts in linked VS Code editor groups for side-by-side exploration
 
 #### AI-Powered Features (Function Flowcharts)
 
@@ -161,7 +172,7 @@ Get CodeVisualizer up and running in your VS Code environment in just a few clic
    - Or use Ollama for completely local AI processing
 
 4. **Start Visualizing**
-   - Right-click any function → "CodeVisualizer: Open flowchart in new window"
+   - Right-click any function → "Open Flowchart in New Window"
    - Right-click any folder → "Visualize Codebase Flow"
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -173,7 +184,7 @@ Get CodeVisualizer up and running in your VS Code environment in just a few clic
 
 1. Open any supported source file in VS Code
 2. Right-click in the editor
-3. Select **"CodeVisualizer: Open flowchart in new window"**
+3. Select **"Open Flowchart in New Window"**
    - Alternatively, use Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) and type "CodeVisualizer"
 4. Explore the interactive flowchart:
    - Click nodes to jump to corresponding code
@@ -191,6 +202,16 @@ Get CodeVisualizer up and running in your VS Code environment in just a few clic
    - Trace import chains between modules
    - Identify circular dependencies
    - Understand your project architecture at a glance
+
+### Visualizing Function Usage
+
+1. Open a TypeScript/JavaScript source file in VS Code
+2. Place the cursor inside a named function
+3. Right-click in the editor and select **"Visualize Function Usage"**
+4. Explore the usage graph:
+   - Click a caller node to jump to its definition
+   - Click the code-flow icon on a caller node to open that caller's function flowchart
+   - Move or split the code-flow panel to keep usage and flow views side by side
 
 ### AI-Enhanced Labels (Function Flowcharts)
 
@@ -226,6 +247,14 @@ Get CodeVisualizer up and running in your VS Code environment in just a few clic
 
 **Planned Support:** Java, C++, C, Rust, Go dependency analysis coming in future releases.
 
+### Function Usage Graphs
+
+| Language | Status | File Extensions |
+|----------|--------|----------------|
+| TypeScript/JavaScript | Supported | `.ts`, `.tsx`, `.js`, `.jsx`, `.mts`, `.cts`, `.mjs`, `.cjs` |
+
+**Planned Support:** Function usage graphs for additional languages are planned for future releases.
+
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- HOW IT WORKS -->
@@ -248,6 +277,14 @@ Get CodeVisualizer up and running in your VS Code environment in just a few clic
 5. **Classification**: Categorizes files based on naming patterns and directory structure
 6. **Visualization**: Generates Mermaid flowchart with color-coded nodes and edges
 7. **Rendering**: Displays an interactive graph with zoom, pan, and navigation features
+
+### Function Usage Analysis Pipeline
+
+1. **Workspace Scan**: Finds supported TypeScript/JavaScript source files
+2. **Function Indexing**: Extracts named functions, methods, and their call sites
+3. **Reverse Graph Building**: Builds a caller graph for the function under the cursor
+4. **Visualization**: Renders an interactive Mermaid graph with node navigation
+5. **Drill-In Flowcharts**: Opens caller function flowcharts from usage graph nodes for deeper inspection
 
 ### AI Label Generation (Function Flowcharts)
 

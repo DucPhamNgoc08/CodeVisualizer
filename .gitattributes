@@ -1,0 +1,19 @@
+# >>> eol-policy (managed by _tools/eol/apply-gitattributes.mjs) >>>
+# Normalise text to LF in the repository AND in the working tree, on every OS.
+# This overrides core.autocrlf and core.eol, so the result no longer depends on
+# any individual machine or contributor Git configuration.
+#
+# `eol=lf` rather than bare `text=auto` is deliberate: `text=auto` alone
+# normalises the repository but leaves the working tree to each machine core.eol,
+# which is CRLF on Windows.
+* text=auto eol=lf
+
+# Must be LF or they fail when executed on Linux/macOS.
+*.sh   text eol=lf
+*.bash text eol=lf
+
+# Windows-only scripts must stay CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+# <<< eol-policy <<<
