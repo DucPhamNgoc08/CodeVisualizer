@@ -1,7 +1,7 @@
 import * as crypto from "crypto";
 import { logInfo, logWarn, logError } from "./LLMLogger";
 
-export type Provider = "openai" | "atlascloud" | "gemini" | "groq" | "ollama";
+export type Provider = "openai" | "atlascloud" | "litellm" | "gemini" | "groq" | "ollama";
 
 export interface TranslateParams {
   mermaidSource: string;
@@ -10,7 +10,7 @@ export interface TranslateParams {
   apiKey: string;
   style?: string;
   language?: string;
-  // For providers that use a base URL instead of an API key (e.g., Ollama)
+  // For providers reached through a user-supplied URL (Ollama, a LiteLLM proxy)
   baseUrl?: string;
 }
 
@@ -21,6 +21,9 @@ export class LLMService {
         return ["gpt-4o-mini", "gpt-4o", "o3-mini"];
       case "atlascloud":
         return ["openai/gpt-4.1-mini"];
+      case "litellm":
+        // Model names are the proxy's own aliases; they are listed from the proxy.
+        return [];
       case "gemini":
         return ["gemini-1.5-flash", "gemini-1.5-pro"];
       case "groq":
@@ -279,6 +282,17 @@ async function callProvider(
           "https://api.atlascloud.ai/v1/chat/completions",
           "Atlas Cloud"
         );
+      case "litellm":
+        return await callOpenAI(
+          model,
+          apiKey,
+          systemPrompt,
+          userPrompt,
+          expectedCount,
+          labels,
+          `${liteLLMRoot(baseUrl)}/v1/chat/completions`,
+          "LiteLLM"
+        );
       case "gemini":
         return await callGemini(
           model,
@@ -465,12 +479,14 @@ async function callOpenAI(
         { role: "user", content: userPrompt },
       ],
     };
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    // A LiteLLM proxy started without a master key takes no Authorization header.
+    if (apiKey) {
+      headers.Authorization = `Bearer ${apiKey}`;
+    }
     const res = await fetch(endpoint, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
+      headers,
       body: JSON.stringify(bodyPayload),
     });
     if (!res.ok) {
@@ -957,6 +973,62 @@ export async function getOllamaModels(baseUrl?: string): Promise<string[]> {
       .filter((s) => !!s);
     return names;
   } catch {
+    return [];
+  }
+}
+
+// -------------------- LiteLLM proxy --------------------
+export const LITELLM_DEFAULT_BASE_URL = "http://localhost:4000";
+
+/** Proxy root without a trailing slash or /v1, so both URL forms users paste work. */
+export function liteLLMRoot(baseUrl?: string): string {
+  const base = baseUrl && baseUrl.trim() ? baseUrl.trim() : LITELLM_DEFAULT_BASE_URL;
+  return base.replace(/\/+$/, "").replace(/\/v1$/, "");
+}
+
+interface LiteLLMModelInfoResponse {
+  data?: Array<{ model_name?: string; model_info?: { mode?: string | null } | null }>;
+}
+
+/**
+ * Chat models served by a LiteLLM proxy. `/model/info` reports each deployment's
+ * mode, so embedding, image and audio deployments stay out of the picker; keys
+ * limited to specific models may not read it, so fall back to `/v1/models`.
+ */
+export async function getLiteLLMModels(baseUrl?: string, apiKey?: string): Promise<string[]> {
+  const root = liteLLMRoot(baseUrl);
+  const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {};
+  try {
+    const res = await fetch(`${root}/model/info`, { method: "GET", headers });
+    if (res.ok) {
+      const data = (await res.json()) as LiteLLMModelInfoResponse;
+      const names = (Array.isArray(data.data) ? data.data : [])
+        .filter((m) => {
+          const mode = m?.model_info?.mode?.toLowerCase();
+          return !mode || mode === "chat" || mode === "responses";
+        })
+        .map((m) => (m && m.model_name ? String(m.model_name) : ""))
+        .filter((s) => !!s);
+      if (names.length > 0) {
+        return Array.from(new Set(names));
+      }
+    }
+  } catch {
+    // fall through to the OpenAI-compatible list
+  }
+  try {
+    const res = await fetch(`${root}/v1/models`, { method: "GET", headers });
+    if (!res.ok) {
+      logWarn(`LiteLLM models list failed: ${res.status}`);
+      return [];
+    }
+    const data: unknown = await res.json();
+    if (!isGroqModelsListResponse(data)) {
+      return [];
+    }
+    return data.data?.map((m) => (m && m.id ? String(m.id) : "")).filter((s) => !!s) || [];
+  } catch (err) {
+    logWarn(`LiteLLM models list failed: ${err instanceof Error ? err.message : String(err)}`);
     return [];
   }
 }

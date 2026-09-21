@@ -124,7 +124,7 @@ Analyze and visualize your entire codebase structure, revealing module dependenc
 **Note:** AI features enhance function-level flowcharts only, making complex logic instantly readable.
 
 - **Smart Labels**: AI-generated human-friendly descriptions replace cryptic variable names and expressions
-- **Multiple Providers**: Works with OpenAI, Gemini, Groq, Ollama (local), and Anthropic
+- **Multiple Providers**: Works with OpenAI, Gemini, Groq, Ollama (local), Anthropic, and any model behind a LiteLLM proxy
 - **Intelligent Caching**: Minimizes API calls and costs through efficient label caching
 - **Customizable Styles**: Choose between concise, explanatory, or technical label formats
 - **Multi-language Support**: Generate labels in your preferred language for global teams
@@ -158,6 +158,7 @@ Get CodeVisualizer up and running in your VS Code environment in just a few clic
    - Open Settings: `Ctrl+,` (Windows/Linux) or `Cmd+,` (Mac)
    - Search for "CodeVisualizer"
    - Enable AI labels and add your API key for supported providers, including Atlas Cloud
+   - Or point it at a [LiteLLM](https://github.com/BerriAI/litellm) proxy (URL plus optional virtual key) to use any model the proxy serves: Anthropic, Bedrock, Azure, Vertex AI, and more
    - Or use Ollama for completely local AI processing
 
 4. **Start Visualizing**

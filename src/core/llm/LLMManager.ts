@@ -3,7 +3,9 @@ import {
   LLMService,
   Provider,
   getGroqModels,
+  getLiteLLMModels,
   getOllamaModels,
+  LITELLM_DEFAULT_BASE_URL,
   extractNodeLabels,
   replaceNodeLabels,
   ExtractedLabels,
@@ -24,8 +26,8 @@ export class LLMManager {
       return false;
     }
     const provider = cfg.get<string>("provider", "openai") as Provider;
-    if (provider === "ollama") {
-      // Ollama runs locally and does not require an API key
+    if (provider === "ollama" || provider === "litellm") {
+      // Ollama runs locally; a LiteLLM proxy's virtual key is optional.
       return true;
     }
     const key = await context.secrets.get(LLMManager.secretKeyName(provider));
@@ -39,6 +41,7 @@ export class LLMManager {
       [
         { label: "OpenAI", value: "openai" },
         { label: "Atlas Cloud", value: "atlascloud" },
+        { label: "LiteLLM (proxy)", value: "litellm" },
         { label: "Gemini", value: "gemini" },
         { label: "Groq", value: "groq" },
         { label: "Ollama (local)", value: "ollama" },
@@ -66,6 +69,38 @@ export class LLMManager {
           LLMManager.secretBaseUrlName("ollama"),
           baseUrl,
         );
+    } else if (provider === "litellm") {
+      baseUrl = await vscode.window.showInputBox({
+        title: "LiteLLM Proxy URL",
+        placeHolder: LITELLM_DEFAULT_BASE_URL,
+        value: LITELLM_DEFAULT_BASE_URL,
+        ignoreFocusOut: true,
+        prompt: "URL of your LiteLLM proxy (with or without /v1)",
+      });
+      if (!baseUrl) {
+        return;
+      }
+      await context.secrets.store(
+        LLMManager.secretBaseUrlName("litellm"),
+        baseUrl,
+      );
+      const virtualKey = await vscode.window.showInputBox({
+        title: "LiteLLM Virtual Key (optional)",
+        placeHolder: "sk-... (leave empty if the proxy has no master key)",
+        ignoreFocusOut: true,
+        password: true,
+      });
+      if (virtualKey === undefined) {
+        return;
+      }
+      if (virtualKey) {
+        await context.secrets.store(
+          LLMManager.secretKeyName("litellm"),
+          virtualKey,
+        );
+      } else {
+        await context.secrets.delete(LLMManager.secretKeyName("litellm"));
+      }
     } else {
       const apiKey = await vscode.window.showInputBox({
         title: `${providerPick.label} API Key`,
@@ -100,6 +135,9 @@ export class LLMManager {
         undefined;
       const remote = await getOllamaModels(base);
       if (remote.length > 0) suggestions = remote;
+    }
+    if (provider === "litellm") {
+      suggestions = await LLMManager.fetchLiteLLMModels(context);
     }
     const modelPick = await vscode.window.showQuickPick(
       [
@@ -151,6 +189,9 @@ export class LLMManager {
         undefined;
       const remote = await getOllamaModels(base);
       if (remote.length > 0) suggestions = remote;
+    }
+    if (provider === "litellm") {
+      suggestions = await LLMManager.fetchLiteLLMModels(context);
     }
     const current = cfg.get<string>("model", suggestions[0] || "");
 
@@ -227,12 +268,12 @@ export class LLMManager {
         ? undefined
         : await context.secrets.get(this.secretKeyName(provider));
     let baseUrl: string | undefined = undefined;
-    if (provider === "ollama") {
+    if (provider === "ollama" || provider === "litellm") {
       baseUrl =
-        (await context.secrets.get(this.secretBaseUrlName("ollama"))) ||
+        (await context.secrets.get(this.secretBaseUrlName(provider))) ||
         undefined;
     }
-    if (provider !== "ollama" && !key) {
+    if (provider !== "ollama" && provider !== "litellm" && !key) {
       logWarn(`No API key found for provider ${provider}`);
       return null;
     }
@@ -331,6 +372,23 @@ export class LLMManager {
       logInfo(`LLM call resolved: ${translated ? "ok" : "null"}`);
       return translated || mermaidSource;
     });
+  }
+
+  private static async fetchLiteLLMModels(
+    context: vscode.ExtensionContext,
+  ): Promise<string[]> {
+    const base =
+      (await context.secrets.get(LLMManager.secretBaseUrlName("litellm"))) ||
+      undefined;
+    const key =
+      (await context.secrets.get(LLMManager.secretKeyName("litellm"))) ||
+      undefined;
+    logInfo("Fetching LiteLLM proxy models");
+    const remote = await getLiteLLMModels(base, key);
+    if (remote.length === 0) {
+      logWarn("LiteLLM proxy returned no models; enter a model name manually");
+    }
+    return remote;
   }
 
   private static secretKeyName(provider: Provider): string {
