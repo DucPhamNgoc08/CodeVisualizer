@@ -259,6 +259,7 @@
           "enum": [
             "openai",
             "atlascloud",
+            "litellm",
             "gemini",
             "groq",
             "ollama",
