@@ -39,6 +39,7 @@ export class LLMManager {
       [
         { label: "OpenAI", value: "openai" },
         { label: "Atlas Cloud", value: "atlascloud" },
+        { label: "Cheaper Inference", value: "cheaperinference" },
         { label: "Gemini", value: "gemini" },
         { label: "Groq", value: "groq" },
         { label: "Ollama (local)", value: "ollama" },

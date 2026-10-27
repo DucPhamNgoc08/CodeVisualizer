@@ -1,7 +1,7 @@
 import * as crypto from "crypto";
 import { logInfo, logWarn, logError } from "./LLMLogger";
 
-export type Provider = "openai" | "atlascloud" | "gemini" | "groq" | "ollama";
+export type Provider = "openai" | "atlascloud" | "cheaperinference" | "gemini" | "groq" | "ollama";
 
 export interface TranslateParams {
   mermaidSource: string;
@@ -21,6 +21,8 @@ export class LLMService {
         return ["gpt-4o-mini", "gpt-4o", "o3-mini"];
       case "atlascloud":
         return ["openai/gpt-4.1-mini"];
+      case "cheaperinference":
+        return ["gpt-5.4-mini", "deepseek-v4-flash"];
       case "gemini":
         return ["gemini-1.5-flash", "gemini-1.5-pro"];
       case "groq":
@@ -278,6 +280,17 @@ async function callProvider(
           labels,
           "https://api.atlascloud.ai/v1/chat/completions",
           "Atlas Cloud"
+        );
+      case "cheaperinference":
+        return await callOpenAI(
+          model,
+          apiKey,
+          systemPrompt,
+          userPrompt,
+          expectedCount,
+          labels,
+          "https://api.cheaperinference.com/v1/chat/completions",
+          "Cheaper Inference"
         );
       case "gemini":
         return await callGemini(

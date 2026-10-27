@@ -259,6 +259,7 @@
           "enum": [
             "openai",
             "atlascloud",
+            "cheaperinference",
             "gemini",
             "groq",
             "ollama",

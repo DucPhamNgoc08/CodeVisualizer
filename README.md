@@ -157,7 +157,7 @@ Get CodeVisualizer up and running in your VS Code environment in just a few clic
 3. **Configure AI Features (Optional)**
    - Open Settings: `Ctrl+,` (Windows/Linux) or `Cmd+,` (Mac)
    - Search for "CodeVisualizer"
-   - Enable AI labels and add your API key for supported providers, including Atlas Cloud
+   - Enable AI labels and add your API key for supported providers, including Atlas Cloud and Cheaper Inference
    - Or use Ollama for completely local AI processing
 
 4. **Start Visualizing**
